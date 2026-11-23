@@ -22,13 +22,12 @@ public class Catalog {
     public record Offer(String sku, String name, String brand, String category, String size, int pieces,
                         BigDecimal price, int packs, String snapshot, Instant queriedAt) {}
     public record Filter(String category, String size, BigDecimal budget, boolean inStock,
-                         Set<String> brands, Set<String> excluded) {
-        public static Filter empty() { return new Filter(null, null, null, false, Set.of(), Set.of()); }
-        boolean matches(Offer row) {
+                         Set<String> brands, Set<String> excluded, Integer quantity, BigDecimal totalBudget,
+                         BigDecimal pendingBudget) {
+        public static Filter empty() { return new Filter(null, null, null, false, Set.of(), Set.of(),null,null,null); }
+        boolean matchesProduct(Offer row) {
             return (category == null || category.equals(row.category()))
                 && (size == null || size.equalsIgnoreCase(row.size()))
-                && (budget == null || row.price().compareTo(budget) <= 0)
-                && (!inStock || row.packs() > 0)
                 && (brands.isEmpty() || brands.contains(row.brand()))
                 && !excluded.contains(row.brand());
         }
@@ -48,16 +47,47 @@ public class Catalog {
         }
     }
 
-    public List<Offer> query(StoreSecurity.Store identity, String requestedStore, Filter filter) {
+    private List<Offer> scopedRows(StoreSecurity.Store identity, String requestedStore) {
         if (!identity.id().equals(requestedStore)) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        if (stockFault != null && java.nio.file.Files.exists(stockFault))
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "库存暂无法确认");
         Instant now = Instant.now();
         return fixture.products().stream().flatMap(p -> p.store_offers().stream()
             .filter(o -> requestedStore.equals(o.store_id()))
             .map(o -> new Offer(p.sku(), p.name(), p.brand(), p.category(), p.size(), p.pieces_per_pack(),
                 o.price_cny(), o.available_packs(), fixture.snapshot_date(), now)))
-            .filter(filter::matches).toList();
+            .toList();
+    }
+
+    public List<String> search(StoreSecurity.Store store, Filter filter) {
+        return scopedRows(store, store.id()).stream().filter(filter::matchesProduct).map(Offer::sku).toList();
+    }
+
+    public Set<String> mentionedBrands(StoreSecurity.Store store, String question) {
+        var matches = new LinkedHashSet<String>();
+        for (Product product : fixture.products()) {
+            if (question.contains(product.brand()) && product.store_offers().stream()
+                    .anyMatch(offer -> store.id().equals(offer.store_id()))) {
+                matches.add(product.brand());
+            }
+        }
+        return matches;
+    }
+
+    public List<Offer> check(StoreSecurity.Store store, Collection<String> candidates, boolean needsStock) {
+        if (needsStock) requireStock();
+        return scopedRows(store, store.id()).stream().filter(row -> candidates.contains(row.sku())).toList();
+    }
+
+    private void requireStock() {
+        if (stockFault != null && java.nio.file.Files.exists(stockFault))
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "库存暂无法确认");
+    }
+
+    public List<Offer> query(StoreSecurity.Store identity, String requestedStore, Filter filter) {
+        var rows = scopedRows(identity, requestedStore);
+        requireStock();
+        return rows.stream().filter(filter::matchesProduct)
+            .filter(row -> filter.budget()==null || row.price().compareTo(filter.budget())<=0)
+            .filter(row -> !filter.inStock() || row.packs()>0).toList();
     }
 
     @GetMapping("/api/stores/{storeId}/offers/{skuId}")

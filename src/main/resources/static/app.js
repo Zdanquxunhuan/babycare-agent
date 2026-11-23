@@ -39,12 +39,20 @@ function render(view) {
       const table = add(box,"table");
       const header = add(table,"tr");
       ["商品","单包售价","库存"].forEach(title => add(header,"th",title));
+      if (turn.reply.quantity) add(header,"th","购买合计");
       for (const item of rows) {
         const row = add(table,"tr");
         [item.name,"¥" + item.price,item.packs + " 包"].forEach(value => add(row,"td",value));
+        if (turn.reply.quantity) add(row,"td",item.price + " × " + turn.reply.quantity + " = " + turn.reply.totals[item.sku] + " 元");
       }
       add(box,"small","模拟门店数据 · 快照 " + rows[0].snapshot + " · 本次查询 " +
         new Date(rows[0].queriedAt).toLocaleString("zh-CN"));
+    }
+    if (turn.reply.trace?.length) {
+      const details = add(box,"details");
+      add(details,"summary","查看核验步骤");
+      const steps = add(details,"ol");
+      turn.reply.trace.forEach(step => add(steps,"li",step));
     }
     for (const cite of turn.reply.citations) {
       const source = add(box,"a",cite.title + " · 摘要 v" + cite.version + " · 查看原文");

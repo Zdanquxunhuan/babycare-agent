@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.yu</groupId>
 	<artifactId>baby-care-agent</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.3.0</version>
 	<name>babyCare_agent</name>
 	<description/>
 	<url/>

@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BabyCare · 门店导购工作台</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body><header><strong><span class="mark" aria-hidden="true">b</span> BabyCare</strong><span id="location">门店导购工作台</span></header>
+<main>
+<section id="access" hidden><h1>导购登录</h1><form id="login"><label>门店账号<select name="username"><option value="direct">模拟直营店 · direct</option><option value="franchise">模拟加盟店 · franchise</option></select></label>
+<label>密码<input name="password" type="password" autocomplete="current-password" placeholder="输入测试账号密码" required></label><button>进入工作台</button></form></section>
+<section id="desk" hidden><div class="bar"><h1>导购工作台</h1><nav><button id="fresh" class="quiet">新对话</button><button id="logout" class="quiet">退出</button></nav></div>
+<div id="history" aria-live="polite"></div><form id="compose"><label for="question">咨询内容</label><textarea id="question" required maxlength="2000" placeholder="例如，本店有哪些 200 元以内的纸尿裤？"></textarea><button>发送</button></form></section>
+<p id="notice" role="status"></p></main></body></html>

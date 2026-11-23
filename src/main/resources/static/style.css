@@ -1,0 +1,24 @@
+* { box-sizing:border-box }
+body { margin:0; background:#f4f7f6; color:#172f30; font:1rem/1.65 "Inter","Microsoft YaHei",sans-serif }
+header { display:flex; justify-content:space-between; align-items:center; gap:1rem; background:#143e3d; color:white; padding:1rem max(5vw,1rem) }
+header strong { font-size:1.45rem; letter-spacing:-.04em }
+.mark { display:inline-grid; place-items:center; background:#c7ead6; color:#154a43; border-radius:35% 50% 50%; width:1.8rem; height:1.8rem; font:bold 1.5rem Georgia }
+main { width:min(54rem,94%); margin:clamp(1.5rem,6vh,4rem) auto }
+#access { max-width:29rem; margin:auto; border-top:4px solid #387b68 }
+section { background:white; padding:clamp(1.1rem,4vw,2.5rem); border:1px solid #d6e2dc; border-radius:1rem }
+h1 { font-size:clamp(1.5rem,3vw,2.1rem); margin:0 0 1rem }
+label { display:block; font-weight:600; margin:.8rem 0 }
+input,select,textarea { display:block; width:100%; padding:.65rem; font:inherit; border:1px solid #a9beb7; border-radius:.5rem; background:#fff; color:inherit }
+textarea { min-height:5rem; resize:vertical }
+button { cursor:pointer; background:#226653; color:white; font:inherit; border:0; border-radius:.5rem; padding:.55rem 1rem }
+button:disabled { opacity:.55; cursor:wait }
+.quiet { color:#235647; background:#eaf3ed; margin-left:.3rem }
+.bar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:.5rem }
+article { margin:1rem 0; padding:1rem; background:#f3f7f5; border-radius:.6rem; overflow-x:auto }
+article p { white-space:pre-line; margin:.4rem 0 }
+table { border-collapse:collapse; min-width:24rem; width:100%; font-size:.93rem }
+td,th { text-align:left; padding:.45rem; border-bottom:1px solid #d5e2da }
+small { display:block; color:#496059; margin:.5rem 0 }
+a { color:#185d4d }
+#compose button,#login button { margin-top:.8rem }
+#notice { color:#83471e; text-align:center }

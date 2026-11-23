@@ -1,0 +1,1017 @@
+{
+  "simulated": true,
+  "description": "品牌、商品、价格与库存均为虚构测试数据。价格单位为人民币元/包，库存单位为包。",
+  "snapshot_date": "2026-11-23",
+  "stores": [
+    {
+      "id": "STORE-01",
+      "name": "模拟直营店"
+    },
+    {
+      "id": "STORE-02",
+      "name": "模拟加盟店"
+    }
+  ],
+  "products": [
+    {
+      "sku": "DEMO-001",
+      "brand": "芽禾",
+      "name": "芽禾 纸尿裤 S 码 64 片",
+      "category": "纸尿裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 92,
+          "available_packs": 6
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 97,
+          "available_packs": 9
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-002",
+      "brand": "芽禾",
+      "name": "芽禾 纸尿裤 M 码 58 片",
+      "category": "纸尿裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 99,
+          "available_packs": 9
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 104,
+          "available_packs": 12
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-003",
+      "brand": "芽禾",
+      "name": "芽禾 纸尿裤 L 码 52 片",
+      "category": "纸尿裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 106,
+          "available_packs": 12
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 111,
+          "available_packs": 15
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-004",
+      "brand": "芽禾",
+      "name": "芽禾 纸尿裤 XL 码 46 片",
+      "category": "纸尿裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 113,
+          "available_packs": 15
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 118,
+          "available_packs": 18
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-005",
+      "brand": "芽禾",
+      "name": "芽禾 纸尿裤 XXL 码 40 片",
+      "category": "纸尿裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 120,
+          "available_packs": 18
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 125,
+          "available_packs": 21
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-006",
+      "brand": "绒朵",
+      "name": "绒朵 纸尿裤 S 码 64 片",
+      "category": "纸尿裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 105,
+          "available_packs": 21
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 110,
+          "available_packs": 0
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-007",
+      "brand": "绒朵",
+      "name": "绒朵 纸尿裤 M 码 58 片",
+      "category": "纸尿裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 112,
+          "available_packs": 0
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 117,
+          "available_packs": 3
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-008",
+      "brand": "绒朵",
+      "name": "绒朵 纸尿裤 L 码 52 片",
+      "category": "纸尿裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 119,
+          "available_packs": 3
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 124,
+          "available_packs": 6
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-009",
+      "brand": "绒朵",
+      "name": "绒朵 纸尿裤 XL 码 46 片",
+      "category": "纸尿裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 126,
+          "available_packs": 6
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 131,
+          "available_packs": 9
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-010",
+      "brand": "绒朵",
+      "name": "绒朵 纸尿裤 XXL 码 40 片",
+      "category": "纸尿裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 133,
+          "available_packs": 9
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 138,
+          "available_packs": 12
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-011",
+      "brand": "小晴",
+      "name": "小晴 纸尿裤 S 码 64 片",
+      "category": "纸尿裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 118,
+          "available_packs": 12
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 123,
+          "available_packs": 15
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-012",
+      "brand": "小晴",
+      "name": "小晴 纸尿裤 M 码 58 片",
+      "category": "纸尿裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 125,
+          "available_packs": 15
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 130,
+          "available_packs": 18
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-013",
+      "brand": "小晴",
+      "name": "小晴 纸尿裤 L 码 52 片",
+      "category": "纸尿裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 132,
+          "available_packs": 18
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 137,
+          "available_packs": 21
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-014",
+      "brand": "小晴",
+      "name": "小晴 纸尿裤 XL 码 46 片",
+      "category": "纸尿裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 139,
+          "available_packs": 21
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 144,
+          "available_packs": 0
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-015",
+      "brand": "小晴",
+      "name": "小晴 纸尿裤 XXL 码 40 片",
+      "category": "纸尿裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 146,
+          "available_packs": 0
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 151,
+          "available_packs": 3
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-016",
+      "brand": "沐叶",
+      "name": "沐叶 纸尿裤 S 码 64 片",
+      "category": "纸尿裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 131,
+          "available_packs": 3
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 136,
+          "available_packs": 6
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-017",
+      "brand": "沐叶",
+      "name": "沐叶 纸尿裤 M 码 58 片",
+      "category": "纸尿裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 138,
+          "available_packs": 6
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 143,
+          "available_packs": 9
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-018",
+      "brand": "沐叶",
+      "name": "沐叶 纸尿裤 L 码 52 片",
+      "category": "纸尿裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 145,
+          "available_packs": 9
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 150,
+          "available_packs": 12
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-019",
+      "brand": "沐叶",
+      "name": "沐叶 纸尿裤 XL 码 46 片",
+      "category": "纸尿裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 152,
+          "available_packs": 12
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 157,
+          "available_packs": 15
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-020",
+      "brand": "沐叶",
+      "name": "沐叶 纸尿裤 XXL 码 40 片",
+      "category": "纸尿裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 159,
+          "available_packs": 15
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 164,
+          "available_packs": 18
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-021",
+      "brand": "星棉",
+      "name": "星棉 纸尿裤 S 码 64 片",
+      "category": "纸尿裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 144,
+          "available_packs": 18
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 149,
+          "available_packs": 21
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-022",
+      "brand": "星棉",
+      "name": "星棉 纸尿裤 M 码 58 片",
+      "category": "纸尿裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 151,
+          "available_packs": 21
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 156,
+          "available_packs": 0
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-023",
+      "brand": "星棉",
+      "name": "星棉 纸尿裤 L 码 52 片",
+      "category": "纸尿裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 158,
+          "available_packs": 0
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 163,
+          "available_packs": 3
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-024",
+      "brand": "星棉",
+      "name": "星棉 纸尿裤 XL 码 46 片",
+      "category": "纸尿裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 165,
+          "available_packs": 3
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 170,
+          "available_packs": 6
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-025",
+      "brand": "星棉",
+      "name": "星棉 纸尿裤 XXL 码 40 片",
+      "category": "纸尿裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 172,
+          "available_packs": 6
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 177,
+          "available_packs": 9
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-026",
+      "brand": "芽禾",
+      "name": "芽禾 拉拉裤 S 码 64 片",
+      "category": "拉拉裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 157,
+          "available_packs": 9
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 162,
+          "available_packs": 12
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-027",
+      "brand": "芽禾",
+      "name": "芽禾 拉拉裤 M 码 58 片",
+      "category": "拉拉裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 164,
+          "available_packs": 12
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 169,
+          "available_packs": 15
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-028",
+      "brand": "芽禾",
+      "name": "芽禾 拉拉裤 L 码 52 片",
+      "category": "拉拉裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 171,
+          "available_packs": 15
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 176,
+          "available_packs": 18
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-029",
+      "brand": "芽禾",
+      "name": "芽禾 拉拉裤 XL 码 46 片",
+      "category": "拉拉裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 178,
+          "available_packs": 18
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 183,
+          "available_packs": 21
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-030",
+      "brand": "芽禾",
+      "name": "芽禾 拉拉裤 XXL 码 40 片",
+      "category": "拉拉裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 185,
+          "available_packs": 21
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 190,
+          "available_packs": 0
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-031",
+      "brand": "绒朵",
+      "name": "绒朵 拉拉裤 S 码 64 片",
+      "category": "拉拉裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 170,
+          "available_packs": 0
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 175,
+          "available_packs": 3
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-032",
+      "brand": "绒朵",
+      "name": "绒朵 拉拉裤 M 码 58 片",
+      "category": "拉拉裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 177,
+          "available_packs": 3
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 182,
+          "available_packs": 6
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-033",
+      "brand": "绒朵",
+      "name": "绒朵 拉拉裤 L 码 52 片",
+      "category": "拉拉裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 184,
+          "available_packs": 6
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 189,
+          "available_packs": 9
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-034",
+      "brand": "绒朵",
+      "name": "绒朵 拉拉裤 XL 码 46 片",
+      "category": "拉拉裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 191,
+          "available_packs": 9
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 196,
+          "available_packs": 12
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-035",
+      "brand": "绒朵",
+      "name": "绒朵 拉拉裤 XXL 码 40 片",
+      "category": "拉拉裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 198,
+          "available_packs": 12
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 203,
+          "available_packs": 15
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-036",
+      "brand": "小晴",
+      "name": "小晴 拉拉裤 S 码 64 片",
+      "category": "拉拉裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 183,
+          "available_packs": 15
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 188,
+          "available_packs": 18
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-037",
+      "brand": "小晴",
+      "name": "小晴 拉拉裤 M 码 58 片",
+      "category": "拉拉裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 190,
+          "available_packs": 18
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 195,
+          "available_packs": 21
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-038",
+      "brand": "小晴",
+      "name": "小晴 拉拉裤 L 码 52 片",
+      "category": "拉拉裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 197,
+          "available_packs": 21
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 202,
+          "available_packs": 0
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-039",
+      "brand": "小晴",
+      "name": "小晴 拉拉裤 XL 码 46 片",
+      "category": "拉拉裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 204,
+          "available_packs": 0
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 209,
+          "available_packs": 3
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-040",
+      "brand": "小晴",
+      "name": "小晴 拉拉裤 XXL 码 40 片",
+      "category": "拉拉裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 211,
+          "available_packs": 3
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 216,
+          "available_packs": 6
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-041",
+      "brand": "沐叶",
+      "name": "沐叶 拉拉裤 S 码 64 片",
+      "category": "拉拉裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 196,
+          "available_packs": 6
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 201,
+          "available_packs": 9
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-042",
+      "brand": "沐叶",
+      "name": "沐叶 拉拉裤 M 码 58 片",
+      "category": "拉拉裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 203,
+          "available_packs": 9
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 208,
+          "available_packs": 12
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-043",
+      "brand": "沐叶",
+      "name": "沐叶 拉拉裤 L 码 52 片",
+      "category": "拉拉裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 210,
+          "available_packs": 12
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 215,
+          "available_packs": 15
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-044",
+      "brand": "沐叶",
+      "name": "沐叶 拉拉裤 XL 码 46 片",
+      "category": "拉拉裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 82,
+          "available_packs": 15
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 87,
+          "available_packs": 18
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-045",
+      "brand": "沐叶",
+      "name": "沐叶 拉拉裤 XXL 码 40 片",
+      "category": "拉拉裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 89,
+          "available_packs": 18
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 94,
+          "available_packs": 21
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-046",
+      "brand": "星棉",
+      "name": "星棉 拉拉裤 S 码 64 片",
+      "category": "拉拉裤",
+      "size": "S",
+      "pieces_per_pack": 64,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 209,
+          "available_packs": 21
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 214,
+          "available_packs": 0
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-047",
+      "brand": "星棉",
+      "name": "星棉 拉拉裤 M 码 58 片",
+      "category": "拉拉裤",
+      "size": "M",
+      "pieces_per_pack": 58,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 81,
+          "available_packs": 0
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 86,
+          "available_packs": 3
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-048",
+      "brand": "星棉",
+      "name": "星棉 拉拉裤 L 码 52 片",
+      "category": "拉拉裤",
+      "size": "L",
+      "pieces_per_pack": 52,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 88,
+          "available_packs": 3
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 93,
+          "available_packs": 6
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-049",
+      "brand": "星棉",
+      "name": "星棉 拉拉裤 XL 码 46 片",
+      "category": "拉拉裤",
+      "size": "XL",
+      "pieces_per_pack": 46,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 95,
+          "available_packs": 6
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 100,
+          "available_packs": 9
+        }
+      ]
+    },
+    {
+      "sku": "DEMO-050",
+      "brand": "星棉",
+      "name": "星棉 拉拉裤 XXL 码 40 片",
+      "category": "拉拉裤",
+      "size": "XXL",
+      "pieces_per_pack": 40,
+      "store_offers": [
+        {
+          "store_id": "STORE-01",
+          "price_cny": 102,
+          "available_packs": 9
+        },
+        {
+          "store_id": "STORE-02",
+          "price_cny": 107,
+          "available_packs": 12
+        }
+      ]
+    }
+  ]
+}

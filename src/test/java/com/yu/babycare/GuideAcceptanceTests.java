@@ -2,13 +2,16 @@ package com.yu.babycare;
 
 import com.yu.babycare.agent.*;
 import com.yu.babycare.agent.LanguageModel.*;
-import com.yu.babycare.catalog.Catalog.Filter;
 import com.yu.babycare.knowledge.Knowledge.Evidence;
 import java.math.BigDecimal;
 import java.net.*;
 import java.net.http.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -258,9 +261,97 @@ class GuideAcceptanceTests {
             if (process.isAlive()) process.destroyForcibly();
         }
     }
+    @Autowired JdbcTemplate db;
+    @Autowired InMemoryUserDetailsManager accounts;
+
+    @Test void checkpointRetriesAndConcurrentVersion() throws Exception {
+        login("direct");
+        var entered = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenAnswer(call -> {
+            entered.countDown();
+            assertTrue(release.await(15,TimeUnit.SECONDS));
+            return purchase(2,"220",null,null);
+        });
+        String path = "/api/conversations/"+chat+"/messages";
+        var input = Map.of("messageId",UUID.randomUUID(),"version",0,"text","买两包 L 码，预算220元");
+        String payload = json.writeValueAsString(input);
+        try (var executor = Executors.newSingleThreadExecutor()) {
+            var first = executor.submit(() -> request("POST",path,"application/json",payload));
+            try {
+                assertTrue(entered.await(15,TimeUnit.SECONDS));
+                assertEquals(409,request("POST",path,"application/json",payload).statusCode());
+            } finally {
+                release.countDown();
+            }
+            assertEquals(1,ok(first.get(15,TimeUnit.SECONDS)).path("version").asInt());
+        }
+        // A new login with a fresh cookie jar can safely replay the committed message.
+        init();
+        authenticate("direct","guide-test");
+        assertEquals(1,ok(request("POST",path,"application/json",payload)).path("turns").size());
+        var conflicting = new HashMap<String,Object>(input);
+        conflicting.put("text","另一条消息");
+        assertEquals(409,request("POST",path,"application/json",json.writeValueAsString(conflicting)).statusCode());
+        conflicting.put("messageId",UUID.randomUUID());
+        assertEquals(409,request("POST",path,"application/json",json.writeValueAsString(conflicting)).statusCode());
+        verify(model,times(1)).interpret(anyString(),anyString(),any(),anySet());
+    }
+
+    @Test void checkpointExpiryAndRevokedAccess() throws Exception {
+        login("direct");
+        String path = "/api/conversations/"+chat;
+        var original = accounts.loadUserByUsername("direct");
+        try {
+            accounts.updateUser(User.withUserDetails(original).roles("OPS").build());
+            assertEquals(403,request("GET",path,null,null).statusCode());
+            assertEquals(403,request("POST","/api/conversations/current",null,null).statusCode());
+        } finally {
+            accounts.updateUser(original);
+        }
+        db.update("UPDATE bc_chat_checkpoint SET expires_at=0 WHERE chat_id=?",chat);
+        assertEquals(404,request("GET",path,null,null).statusCode());
+        var replacement=ok(request("POST","/api/conversations/current",null,null));
+        assertNotEquals(chat,replacement.path("id").asString());
+        assertEquals(0,replacement.path("version").asInt());
+    }
+
+    @Test void failureReleasesClaimAndExpiredLeaseCanBeRetried() throws Exception {
+        login("direct");
+        db.update("UPDATE bc_chat_checkpoint SET claim_token='abandoned',claim_until=1 WHERE chat_id=?",chat);
+        when(model.interpret(anyString(),anyString(),any(),anySet()))
+            .thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE))
+            .thenReturn(purchase(2,"220",null,null));
+        String path="/api/conversations/"+chat+"/messages";
+        String input=json.writeValueAsString(Map.of("messageId",UUID.randomUUID(),"version",0,"text","两包预算220元"));
+        assertEquals(503,request("POST",path,"application/json",input).statusCode());
+        assertEquals(1,ok(request("POST",path,"application/json",input)).path("version").asInt());
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_RESTART_PHASE",matches="prepare|resume")
+    void checkpointBrowserAcrossProcesses() throws Exception {
+        String phase = System.getenv("BABYCARE_RESTART_PHASE");
+        if (phase.equals("prepare")) {
+            when(model.interpret(eq("买两包 L 码，预算 220 元"),eq("STORE-01"),any(),anySet()))
+                .thenReturn(purchase(2,"220",null,null));
+        } else {
+            when(model.interpret(eq("总价"),eq("STORE-01"),any(),anySet())).thenAnswer(call -> {
+                Context context = call.getArgument(2);
+                assertTrue(context.pendingQuestion().contains("每包上限"));
+                assertEquals("L",context.conditions().size());
+                assertEquals(2,context.conditions().quantity());
+                assertEquals(220,context.conditions().pendingBudget().intValueExact());
+                return new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,null,null,Scope.TOTAL);
+            });
+            when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        }
+        runBrowser("checkpoint-acceptance.cjs",phase);
+    }
+
     @Test void recommendAndRefine() throws Exception {
         login("direct");
-        when(model.interpret(anyString(),anyString(),any(Filter.class),anySet())).thenReturn(
+        when(model.interpret(anyString(),anyString(),any(Context.class),anySet())).thenReturn(
             plan(Intent.PRODUCT,null,200,null,null), plan(Intent.RECOMMEND_SIZE,null,null,null,null),
             plan(Intent.PRODUCT,"L",null,null,null), plan(Intent.PRODUCT,null,120,null,Set.of("芽禾")),
             plan(Intent.PRODUCT,null,100,null,null));

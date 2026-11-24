@@ -36,6 +36,7 @@ async function ask(text){
 }
 async function fresh(){ const response=page.waitForResponse(r=>r.url().endsWith('/api/conversations')); await page.locator('#fresh').click();await response; }
 await login('direct');
+await fresh();
 const purchasesOnly=process.argv.includes('--purchase-only');
 const fault=process.env.BABYCARE_STOCK_FAULT_FILE || 'target/stock-offline.flag';
 let answer;
@@ -106,6 +107,7 @@ assert.match(await ask('再查一次'),/106 × 2 = 212 元/);
 console.log('MP-08 OK');
 if (!purchasesOnly) {
 await page.locator('#logout').click();await login('franchise');
+await fresh();
 assert.match(await ask('本店绒朵 L 码纸尿裤多少钱？有多少包？'),/124[\s\S]*6 包/);console.log('AC-03 OK');
 await fresh();answer=await ask('列出本店 150 元以内有货的 L 码纸尿裤');assert.match(answer,/沐叶[\s\S]*150/);assert.ok(!answer.includes('星棉'));console.log('AC-08 OK');
 }

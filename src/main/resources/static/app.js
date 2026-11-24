@@ -27,7 +27,6 @@ function add(parent, tag, value) {
 }
 function render(view) {
   chat = view;
-  sessionStorage.setItem("conversation",chat.id);
   const history = el("history");
   history.replaceChildren();
   for (const turn of chat.turns) {
@@ -83,18 +82,13 @@ async function init() {
   el("desk").hidden = !session.authenticated || ops;
   el("location").textContent = session.store?.name || "门店导购工作台";
   if (!session.authenticated) {
-    sessionStorage.removeItem("conversation");
     el("history").replaceChildren();
     chat = pending = null;
     return;
   }
   if (ops) { await loadPolicies(); return; }
-  const id = sessionStorage.getItem("conversation");
-  if (id) {
-    try { render(await api("/api/conversations/" + id)); return; }
-    catch (err) { if (err.status !== 404) throw err; }
-  }
-  await newChat();
+  render(await api("/api/conversations/current","POST"));
+  pending = null;
 }
 async function run(action) {
   const buttons = [...document.querySelectorAll("button")];
@@ -129,7 +123,11 @@ el("compose").onsubmit = event => {
     try {
       render(await api("/api/conversations/" + chat.id + "/messages","POST",pending));
     } catch (err) {
-      if (err.status === 409) render(await api("/api/conversations/" + chat.id));
+      if (err.status === 404 || err.status === 409) {
+        const before = chat.id;
+        render(await api("/api/conversations/current","POST"));
+        if (chat.id !== before) pending = null;
+      }
       if (err.status === 401 || err.status === 403) await init();
       throw err;
     }

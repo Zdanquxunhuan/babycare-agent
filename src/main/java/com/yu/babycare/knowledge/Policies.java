@@ -13,16 +13,20 @@ public class Policies {
     public record Draft(String key, String title, String scope, LocalDate expiresOn, String markdown) {}
     public record Version(String key, int version, String title, String scope, LocalDate expiresOn, String status) {}
     public record Hit(Knowledge.Evidence evidence, int score) {}
-    private static final String CURRENT_VERSION = """
+    static final String CURRENT_VERSION = """
         FROM bc_policy_chunk c
         JOIN bc_policy p ON p.policy_key=c.policy_key AND p.active_version=c.rev
         JOIN bc_policy_version v ON v.policy_key=c.policy_key AND v.rev=c.rev
         """;
-    private static final String VISIBLE = """
+    static final String VISIBLE = """
         WHERE (v.store_scope='ALL' OR v.store_scope=?) AND (v.expires_on IS NULL OR v.expires_on>=CURRENT_DATE)
         """;
     private final JdbcTemplate db;
-    public Policies(JdbcTemplate db) { this.db = db; }
+    private final Optional<HybridSearch> hybrid;
+    public Policies(JdbcTemplate db,Optional<HybridSearch> hybrid) {
+        this.db=db;
+        this.hybrid=hybrid;
+    }
 
     @Transactional
     public int upload(Draft draft) {
@@ -73,6 +77,7 @@ public class Policies {
             (SELECT 1 FROM bc_policy_version WHERE policy_key=? AND rev=? AND (expires_on IS NULL OR expires_on>=CURRENT_DATE))
             """,rev,rev,key,rev,key,rev);
         if (changed!=1) throw new ResponseStatusException(HttpStatus.CONFLICT,"版本已过期、已发布或已被新版替代");
+        hybrid.ifPresent(h -> h.index(key,rev)); // Same transaction; readers see the old version until commit.
         db.update("UPDATE bc_policy_version SET reviewed_by=? WHERE policy_key=? AND rev=?",reviewer,key,rev);
     }
 
@@ -91,12 +96,13 @@ public class Policies {
             " ORDER BY t.score DESC,c.policy_key,c.position_no LIMIT 5";
         var args = new ArrayList<Object>(terms);
         args.add(store);
-        return db.query(sql,(r,n) -> {
-            String id = r.getString("chunk_id");
-            var evidence = new Knowledge.Evidence(id,r.getString("title"),r.getString("rev"),
-                "/api/knowledge/citations/"+id,r.getString("excerpt"),r.getString("section"));
-            return new Hit(evidence,r.getInt("score"));
-        },args.toArray());
+        return db.query(sql,(r,n) -> new Hit(evidence(r),r.getInt("score")),args.toArray());
+    }
+
+    static Knowledge.Evidence evidence(java.sql.ResultSet r) throws java.sql.SQLException {
+        String id = r.getString("chunk_id");
+        return new Knowledge.Evidence(id,r.getString("title"),r.getString("rev"),
+            "/api/knowledge/citations/"+id,r.getString("excerpt"),r.getString("section"));
     }
 
     public String original(String key,int rev) {

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:0.8.1-pg16
     environment:
       POSTGRES_DB: babycare
       POSTGRES_USER: babycare
@@ -14,5 +14,19 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  embed:
+    profiles: [hybrid]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    command: ["--model-id", "BAAI/bge-m3", "--revision", "5617a9f61b028005a4858fdac845db406aefb181", "--pooling", "cls", "--dtype", "float32", "--auto-truncate"]
+    ports: ["127.0.0.1:58081:80"]
+    volumes: ["embed-cache:/data"]
+  rerank:
+    profiles: [hybrid]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    command: ["--model-id", "BAAI/bge-reranker-v2-m3", "--dtype", "float32", "--auto-truncate"]
+    ports: ["127.0.0.1:58082:80"]
+    volumes: ["rerank-cache:/data"]
 volumes:
+  embed-cache:
+  rerank-cache:
   policy-data:

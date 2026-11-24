@@ -11,6 +11,7 @@ const {chromium} = require('playwright');
     await page.locator('#login input').fill(process.env.BABYCARE_DEMO_PASSWORD);
     await page.locator('#login button').click();
     await page.locator('#fresh').click();
+    await page.waitForFunction(() => !document.querySelector('#fresh').disabled);
     async function ask(text) {
       await page.locator('#question').fill(text);
       const completed = page.waitForResponse(r => r.url().endsWith('/messages'));

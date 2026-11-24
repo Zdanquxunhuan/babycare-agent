@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   postgres:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       db:
         image: postgres:16
@@ -34,5 +34,5 @@ jobs:
           java-version: '21'
           cache: maven
       - run: npm install --prefix "$RUNNER_TEMP/browser" playwright@1.56.1
-      - run: "$RUNNER_TEMP/browser/node_modules/.bin/playwright install --with-deps chromium"
+      - run: echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
       - run: NODE_PATH="$RUNNER_TEMP/browser/node_modules" bash mvnw -B verify

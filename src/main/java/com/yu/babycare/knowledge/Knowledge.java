@@ -46,7 +46,7 @@ public class Knowledge {
         if (overlap>0) publicSample.ifPresent(e -> hits.add(new Policies.Hit(e,overlap)));
         var lexical = hits.stream().sorted(Comparator.comparingInt(Policies.Hit::score).reversed()).limit(5).map(Policies.Hit::evidence).toList();
         var result = selected == Mode.LEXICAL ? lexical :
-            hybrid.orElseThrow().search(store,query,lexical,selected == Mode.RERANK);
+            hybrid.orElseThrow().search(store,query,lexical,selected == Mode.RERANK,e -> visible(store,e));
         return result.stream().filter(e -> visible(store,e)).toList();
     }
 

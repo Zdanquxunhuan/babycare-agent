@@ -67,5 +67,16 @@ class HybridPolicyTests {
         assertTrue(knowledge.search("STORE-01","不想要了").isEmpty());
         policies.withdraw(key,2);
         assertTrue(knowledge.search("STORE-01","拆包").isEmpty());
+
+        // The lexical hit becomes stale while the query vector is being calculated.
+        int rev=policies.upload(first);
+        policies.publish(key,rev,"ops");
+        String question="拆包";
+        doAnswer(call -> {
+            policies.withdraw(key,rev);
+            return new double[][]{vector};
+        }).when(models).embed(List.of(question));
+        assertTrue(knowledge.search("STORE-01",question,Knowledge.Mode.RERANK).isEmpty());
+        verify(models,never()).rerank(eq(question),argThat(hits -> !hits.isEmpty()));
     }
 }

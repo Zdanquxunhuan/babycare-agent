@@ -1,6 +1,7 @@
 package com.yu.babycare.knowledge;
 
 import java.util.*;
+import java.util.function.Predicate;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
@@ -40,14 +41,19 @@ class HybridSearch implements ApplicationRunner {
         }
     }
 
-    List<Knowledge.Evidence> search(String store,String query,List<Knowledge.Evidence> lexical,boolean rerank) {
+    List<Knowledge.Evidence> search(String store,String query,List<Knowledge.Evidence> lexical,boolean rerank,
+                                    Predicate<Knowledge.Evidence> visible) {
         var vector = bge.embed(List.of(query))[0];
         var dense = db.query("SELECT c.chunk_id,c.section,c.excerpt,v.title,v.rev " + Policies.CURRENT_VERSION
             + " JOIN bc_bgem3_chunk_v1 b ON b.chunk_id=c.chunk_id " + Policies.VISIBLE
             + " ORDER BY b.embedding <=> CAST(? AS vector),c.policy_key,c.position_no LIMIT 5",
             (r,n) -> Policies.evidence(r),store,Arrays.toString(vector));
         var fused = fuse(lexical,dense);
-        return (rerank ? bge.rerank(query,fused) : fused).stream().limit(5).toList();
+        if (rerank) {
+            // A policy can be withdrawn while the query embedding is being computed.
+            fused = bge.rerank(query,fused.stream().filter(visible).toList());
+        }
+        return fused.stream().limit(5).toList();
     }
 
     static List<Knowledge.Evidence> fuse(List<Knowledge.Evidence> lexical,List<Knowledge.Evidence> dense) {

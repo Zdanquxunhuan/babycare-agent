@@ -1,0 +1,38 @@
+name: Text RAG regression
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_DB: babycare
+          POSTGRES_USER: babycare
+          POSTGRES_PASSWORD: test-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U babycare -d babycare"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      SPRING_PROFILES_ACTIVE: rag
+      BABYCARE_DB_URL: jdbc:postgresql://localhost:5432/babycare
+      BABYCARE_DB_PASSWORD: test-only
+      BABYCARE_BROWSER_TEST: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: npm install --prefix "$RUNNER_TEMP/browser" playwright@1.56.1
+      - run: "$RUNNER_TEMP/browser/node_modules/.bin/playwright install --with-deps chromium"
+      - run: NODE_PATH="$RUNNER_TEMP/browser/node_modules" bash mvnw -B verify

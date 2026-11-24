@@ -3,8 +3,17 @@
 <title>BabyCare · 门店导购工作台</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
 <body><header><strong><span class="mark" aria-hidden="true">b</span> BabyCare</strong><span id="location">门店导购工作台</span></header>
 <main>
-<section id="access" hidden><h1>导购登录</h1><form id="login"><label>门店账号<select name="username"><option value="direct">模拟直营店 · direct</option><option value="franchise">模拟加盟店 · franchise</option></select></label>
+<section id="access" hidden><h1>导购登录</h1><form id="login"><label>门店账号<select name="username"><option value="direct">模拟直营店 · direct</option><option value="franchise">模拟加盟店 · franchise</option><option value="ops">知识运营 · ops</option></select></label>
 <label>密码<input name="password" type="password" autocomplete="current-password" placeholder="输入测试账号密码" required></label><button>进入工作台</button></form></section>
 <section id="desk" hidden><div class="bar"><h1>导购工作台</h1><nav><button id="fresh" class="quiet">新对话</button><button id="logout" class="quiet">退出</button></nav></div>
 <div id="history" aria-live="polite"></div><form id="compose"><label for="question">咨询内容</label><textarea id="question" required maxlength="2000" placeholder="例如，本店有哪些 200 元以内的纸尿裤？"></textarea><button>发送</button></form></section>
+<section id="ops" hidden>
+<div class="bar"><h1>知识运营</h1><button id="ops-logout" class="quiet">退出</button></div>
+<form id="upload">
+<label>政策编号（换版沿用同一编号）<input name="key" pattern="[A-Za-z0-9_-]{1,80}" placeholder="returns" required></label>
+<label>资料标题<input name="title" maxlength="120" required></label>
+<label>适用范围<select name="scope"><option value="ALL">所有门店</option><option value="STORE-01">模拟直营店</option><option value="STORE-02">模拟加盟店</option></select></label>
+<label>有效至（可留空）<input type="date" name="expiresOn"></label>
+<label>Markdown 文件<input type="file" name="file" accept=".md,.markdown,text/markdown" required></label>
+<button>导入草稿</button></form><h2>资料版本</h2><div id="versions"></div></section>
 <p id="notice" role="status"></p></main></body></html>

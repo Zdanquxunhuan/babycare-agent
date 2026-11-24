@@ -14,19 +14,17 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
-  embed:
+  bge:
     profiles: [hybrid]
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    command: ["--model-id", "BAAI/bge-m3", "--revision", "5617a9f61b028005a4858fdac845db406aefb181", "--pooling", "cls", "--dtype", "float32", "--auto-truncate"]
-    ports: ["127.0.0.1:58081:80"]
-    volumes: ["embed-cache:/data"]
-  rerank:
-    profiles: [hybrid]
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    command: ["--model-id", "BAAI/bge-reranker-v2-m3", "--dtype", "float32", "--auto-truncate"]
-    ports: ["127.0.0.1:58082:80"]
-    volumes: ["rerank-cache:/data"]
+    build: ./models
+    ports: ["127.0.0.1:58081:8080"]
+    volumes: ["bge-cache:/data"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=4)"]
+      interval: 5s
+      timeout: 5s
+      start_period: 20m
+      retries: 4
 volumes:
-  embed-cache:
-  rerank-cache:
+  bge-cache:
   policy-data:

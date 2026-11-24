@@ -40,3 +40,19 @@ jobs:
       - name: Verify hybrid permissions, publication rollback and old data backfill
         run: BABYCARE_VECTOR_TEST=1 SPRING_PROFILES_ACTIVE=rag,hybrid bash mvnw -B -Dtest=HybridPolicyTests test
       - run: NODE_PATH="$RUNNER_TEMP/browser/node_modules" bash mvnw -B verify
+      - name: Resume a checkpoint in a new JVM and browser
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/browser/node_modules"
+          export BABYCARE_FIXTURES="$RUNNER_TEMP/restart-fixtures"
+          cp -r fixtures "$BABYCARE_FIXTURES"
+          BABYCARE_RESTART_PHASE=prepare bash mvnw -B "-Dtest=GuideAcceptanceTests#checkpointBrowserAcrossProcesses" test
+          python - <<'PY'
+          import json, os, pathlib
+          path = pathlib.Path(os.environ["BABYCARE_FIXTURES"], "catalog-demo.json")
+          catalog = json.loads(path.read_text())
+          item = next(p for p in catalog["products"] if p["sku"] == "DEMO-003")
+          offer = next(o for o in item["store_offers"] if o["store_id"] == "STORE-01")
+          offer.update(price_cny=108, available_packs=4)
+          path.write_text(json.dumps(catalog, ensure_ascii=False))
+          PY
+          BABYCARE_RESTART_PHASE=resume bash mvnw -B "-Dtest=GuideAcceptanceTests#checkpointBrowserAcrossProcesses" test

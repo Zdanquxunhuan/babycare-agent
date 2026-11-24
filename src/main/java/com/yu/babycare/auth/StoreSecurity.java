@@ -51,10 +51,7 @@ public class StoreSecurity {
             .requestCache(cache -> cache.disable())
             .exceptionHandling(errors -> errors.authenticationEntryPoint((req,res,err) -> res.setStatus(401)))
             .formLogin(login -> login.loginProcessingUrl("/api/session/login")
-                .successHandler((req,res,auth) -> {
-                    req.getSession().removeAttribute(com.yu.babycare.conversation.Conversations.class.getName());
-                    res.setStatus(204);
-                })
+                .successHandler((req,res,auth) -> res.setStatus(204))
                 .failureHandler((req,res,err) -> res.setStatus(401)).permitAll())
             .logout(logout -> logout.logoutUrl("/api/session/logout")
                 .logoutSuccessHandler((req,res,auth) -> res.setStatus(HttpStatus.NO_CONTENT.value())))

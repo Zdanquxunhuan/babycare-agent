@@ -115,19 +115,20 @@ public class Guide {
      * @param question 用户原话 / the raw user question
      * @param store    当前登录账号所属门店，所有数据访问都被限制在该门店内 /
      *                 store of the authenticated account; all data access is scoped to it
-     * @param previous 上一轮继承的检索条件 / filter carried from the previous turn
+     * @param context 上一轮已确认的条件与等待导购回答的问题
      * @return 本轮回复 + 下一轮要继承的条件 / this turn's reply plus the filter for the next turn
      * @throws ResponseStatusException {@code 503} 模型输出不可用；库存故障由下层转为降级回复。
      *                                 503 when model output is unusable; stock faults are converted
      *                                 to a degraded reply below.
      */
-    public Result answer(String question, Store store, Filter previous) {
+    public Result answer(String question, Store store, LanguageModel.Context context) {
+        Filter previous = context.conditions();
         // 危急症状走本地硬编码快路：不等模型、不改变已有条件，先保证安全。 / Red-flag symptoms short-circuit locally: no model wait, filter untouched.
         if (List.of("呼吸困难","抽搐","意识不清","严重脱水","喘不过气").stream().anyMatch(question::contains))
             return risk(previous);
         // 从目录词表里找出问题提到的品牌，稍后用于“要查还是排除”的消歧。 / Collect brand names from the catalog vocabulary; used later to disambiguate include vs exclude.
         var mentioned = catalog.mentionedBrands(store,question);
-        var plan = model.interpret(question, store.id(), previous, mentioned);
+        var plan = model.interpret(question, store.id(), context, mentioned);
         // 模型只解析意图与槽位；空意图说明输出不可用，交给前端提示重试。/ The model only extracts intent and slots; a null intent is unusable output, so fail fast.
         if (plan.intent() == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "模型输出无效");
         if (plan.intent() == LanguageModel.Intent.RISK) return risk(previous);

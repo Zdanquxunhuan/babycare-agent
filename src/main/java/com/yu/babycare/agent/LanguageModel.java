@@ -20,7 +20,8 @@ public interface LanguageModel {
                 null, null, null);
         }
     }
-    Plan interpret(String question, String store, Filter previous, Set<String> mentionedBrands);
+    record Context(Filter conditions, String pendingQuestion) {}
+    Plan interpret(String question, String store, Context context, Set<String> mentionedBrands);
     String selectEvidence(String question, List<Evidence> evidence);
     Check firstCheck(Filter conditions, int candidates, long remainingMillis);
 }

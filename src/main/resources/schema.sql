@@ -36,3 +36,24 @@ CREATE TABLE IF NOT EXISTS bc_answer_feedback (
   helpful BOOLEAN NOT NULL,
   PRIMARY KEY (guide_name,message_id,evidence_id)
 );
+
+CREATE TABLE IF NOT EXISTS bc_chat_checkpoint (
+  guide_name VARCHAR(80) NOT NULL,
+  store_id VARCHAR(32) NOT NULL,
+  chat_id VARCHAR(36) NOT NULL UNIQUE,
+  version INTEGER NOT NULL,
+  context_json TEXT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  claim_token VARCHAR(36),
+  claim_until BIGINT,
+  PRIMARY KEY (guide_name, store_id)
+);
+CREATE TABLE IF NOT EXISTS bc_chat_turn (
+  chat_id VARCHAR(36) NOT NULL REFERENCES bc_chat_checkpoint(chat_id),
+  version INTEGER NOT NULL,
+  message_id VARCHAR(36) NOT NULL,
+  question TEXT NOT NULL,
+  reply_json TEXT NOT NULL,
+  PRIMARY KEY (chat_id, version),
+  UNIQUE (chat_id, message_id)
+);

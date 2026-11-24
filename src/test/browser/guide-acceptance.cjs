@@ -11,7 +11,7 @@ const toolStats={turns:0,checks:0,duplicates:0};
 page.on('pageerror',err=>errors.push(err.message));
 await page.goto(process.env.BABYCARE_URL || 'http://127.0.0.1:18136');
 async function login(name){
-  await page.locator('select').selectOption(name);
+  await page.locator('#login select').selectOption(name);
   await page.locator('[name=password]').fill(process.env.BABYCARE_DEMO_PASSWORD || 'BabyCare-demo');
   await page.getByText('进入工作台',{exact:true}).click();
   await page.locator('#question').waitFor();

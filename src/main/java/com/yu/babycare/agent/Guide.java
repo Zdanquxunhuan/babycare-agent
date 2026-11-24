@@ -42,10 +42,10 @@ public class Guide {
         if (plan.store() != null && !store.id().equals(plan.store()))
             return new Result(previous, Reply.message("access_denied","该门店超出当前账号的查询权限。"));
         if (plan.intent() == LanguageModel.Intent.KNOWLEDGE) {
-            var evidence = knowledge.search(question);
+            var evidence = knowledge.search(store.id(),question);
             if (!evidence.isEmpty()) {
                 String id = model.selectEvidence(question, evidence);
-                for (var hit : evidence) if (hit.id().equals(id))
+                for (var hit : evidence) if (hit.id().equals(id) && knowledge.visible(store.id(),hit))
                     return new Result(previous,new Reply("knowledge",hit.excerpt(),List.of(),List.of(hit)));
             }
             return new Result(previous,Reply.message("no_evidence","现有审核资料不足以回答这个问题。"));

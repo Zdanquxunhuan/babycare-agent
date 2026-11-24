@@ -44,3 +44,34 @@ Maven 的 test 阶段运行启动测试与真实 HTTP 会话集成测试。后�
 从仓库根目录运行，需 Node.js、可导入的 Playwright 和 Chromium。使用系统 Chrome 时可设置 `CHROME_PATH`。本地回归时设置 `BABYCARE_BROWSER_TEST=1` 并执行 `.\mvnw.cmd test`，测试会启动临时 Web 服务并以模型替身执行首版及多包用例。
 
 真实模型验收时先用启动脚本运行服务，设置 `BABYCARE_URL`（默认 http://127.0.0.1:18136），再执行 `node src/test/browser/guide-acceptance.cjs`。使用 `--purchase-only` 可单独跑 MP-01～08。测试会临时切换演示库存故障标志，请在独立验收环境运行。结果及未验事项见[进度记录](plantodo.md)。
+
+## V1.0a 文本检索 RAG
+
+Windows PowerShell 从项目根目录运行。使用独立的 PostgreSQL 16 数据卷，默认宿主机端口为 55432。已有 PostgreSQL 可用独立的 babycare 库和账号，并设置 BABYCARE_DB_URL、BABYCARE_DB_USER、BABYCARE_DB_PASSWORD。
+
+```powershell
+$env:JAVA_HOME = 'F:\ayd\jdk-21'
+$env:BABYCARE_DB_PASSWORD = [System.Net.NetworkCredential]::new('',(Read-Host '本地 BabyCare 数据库密码' -AsSecureString)).Password
+$env:BABYCARE_OPS_PASSWORD = [System.Net.NetworkCredential]::new('',(Read-Host '知识运营账号密码' -AsSecureString)).Password
+docker compose up -d --wait
+.\mvnw.cmd package
+$env:SPRING_PROFILES_ACTIVE = 'rag'
+.\start-demo.ps1
+```
+
+使用 rag 配置时，原文、门店范围、有效期、条款、索引和反馈写入 PostgreSQL。普通演示配置用临时 H2 库，重启会清空新增资料。运营账号 ops 仅在设置独立运营密码后启用。以下资料均为模拟政策。
+
+1. 在一个浏览器登录 ops，另开无痕窗口以 direct 登录导购。运营选 [returns-v1.md](fixtures/policies/returns-v1.md)，编号填 returns，标题填“模拟售后政策”，范围选直营店。导入后导购问“顾客拆包了还能退吗？”应提示资料不足。运营查看送审原文，点击“审核并发布”，再问应看到“由店长确认”和第4条的引用。
+2. 用同一个编号、标题和范围导入 [returns-v2.md](fixtures/policies/returns-v2.md)。发布前继续答 V1，发布后再问应出现“照片”和“售后专员”。点击引用可查看对应条款，旧链接失效；加盟店账号无法访问。导购可对该轮引用答案标记有用/无用。
+3. 运营下线 V2，再问同一句话应提示资料不足。
+
+索引与查询共享中文连续双字、字母数字词的切分规则。按命中词的权重之和排序（标题/章节 3，正文 1），最多返回 5 条。门店、当前版本和有效期在选取 Top 5 前过滤。知识回答只接受候选中的证据 ID，展示对应原文；价格、库存沿用原查询工具。
+
+**V1.0b 对照基线。** 固定 V1、直营店、同一份样本和以下问法。`GuideAcceptanceTests#policyLifecycleAndBaseline` 输出候选章节排名、检索耗时及模型替身的最终引用。真实模型引用以导购网页复测结果为准。可在独立测试数据库或默认临时库运行 `.\mvnw.cmd "-Dtest=GuideAcceptanceTests#policyLifecycleAndBaseline" test`。
+
+| 固定问法 | 标注目标 |
+|---|---|
+| 政策第4条怎么处理 | 第4条 已拆包 |
+| 顾客拆包了还能退吗？ | 第4条 已拆包 |
+| 包装打开了，客人又不想要了，怎么办？ | 第4条 已拆包；记录词法检索漏召回或被“原包装”误导的情况 |
+| 发票抬头怎么改？ | 无答案 |

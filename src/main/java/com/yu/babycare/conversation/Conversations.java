@@ -1,6 +1,8 @@
 package com.yu.babycare.conversation;
 
 import com.yu.babycare.agent.Guide;
+import com.yu.babycare.knowledge.Policies;
+import com.yu.babycare.knowledge.Knowledge;
 import com.yu.babycare.auth.StoreSecurity;
 import com.yu.babycare.catalog.Catalog.Filter;
 import jakarta.servlet.http.HttpSession;
@@ -24,16 +26,47 @@ public class Conversations {
         final UUID id = UUID.randomUUID();
         final List<Turn> turns = new ArrayList<>();
         Filter filter = Filter.empty();
-        View view() { return new View(id, turns.size(), List.copyOf(turns)); }
+
     }
     private final Guide guide;
-    public Conversations(Guide guide) { this.guide = guide; }
+    private final Policies policies;
+    private final Knowledge knowledge;
+    public Conversations(Guide guide, Policies policies, Knowledge knowledge) {
+        this.knowledge = knowledge;
+        this.guide = guide;
+        this.policies = policies;
+    }
+
+    public record Feedback(Boolean helpful) {}
+    @PostMapping("/{id}/messages/{message}/feedback")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void feedback(Authentication auth, HttpSession session, @PathVariable UUID id,
+                         @PathVariable UUID message, @RequestBody Feedback feedback) {
+        if (feedback.helpful()==null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        Chat chat = owned(session,id);
+        synchronized (chat) {
+            var evidence = chat.turns.stream().filter(turn -> turn.messageId().equals(message))
+                .flatMap(turn -> turn.reply().citations().stream()).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            policies.feedback(auth.getName(),message,evidence,feedback.helpful());
+        }
+    }
+
+    private View view(Chat chat, Authentication auth) {
+        var store = StoreSecurity.store(auth);
+        var visible = chat.turns.stream().map(turn -> {
+            if (turn.reply().citations().stream().allMatch(c -> knowledge.visible(store.id(),c))) return turn;
+            return new Turn(turn.messageId(),turn.question(),
+                new Guide.Reply("no_evidence","原引用资料已失效，请重新提问。",List.of(),List.of(),null,Map.of(),List.of()));
+        }).toList();
+        return new View(chat.id,chat.turns.size(),visible);
+    }
 
     @PostMapping
-    public View create(HttpSession session) {
+    public View create(Authentication auth,HttpSession session) {
         Chat chat = new Chat();
         session.setAttribute(ATTRIBUTE,chat);
-        return chat.view();
+        return view(chat,auth);
     }
 
     private Chat owned(HttpSession session, UUID id) {
@@ -42,9 +75,9 @@ public class Conversations {
     }
 
     @GetMapping("/{id}")
-    public View read(HttpSession session,@PathVariable UUID id) {
+    public View read(Authentication auth,HttpSession session,@PathVariable UUID id) {
         Chat chat = owned(session,id);
-        synchronized (chat) { return chat.view(); }
+        synchronized (chat) { return view(chat,auth); }
     }
 
     @PostMapping("/{id}/messages")
@@ -54,7 +87,7 @@ public class Conversations {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请输入 1 至 2000 字的问题");
         synchronized (chat) {
             for (Turn turn : chat.turns) if (turn.messageId().equals(input.messageId())) {
-                if (turn.question().equals(input.text())) return chat.view();
+                if (turn.question().equals(input.text())) return view(chat,auth);
                 throw new ResponseStatusException(HttpStatus.CONFLICT);
             }
             if (input.version()!=chat.turns.size()) throw new ResponseStatusException(HttpStatus.CONFLICT);
@@ -67,7 +100,7 @@ public class Conversations {
             log.info("turn={} store={} result={} durationMs={} evidence={}", input.messageId(), store.id(),
                 result.reply().type(), (System.nanoTime()-start)/1_000_000,
                 result.reply().citations().stream().map(c -> c.id()).toList());
-            return chat.view();
+            return view(chat,auth);
         }
     }
 }

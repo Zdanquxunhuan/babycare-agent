@@ -55,10 +55,18 @@ function render(view) {
       turn.reply.trace.forEach(step => add(steps,"li",step));
     }
     for (const cite of turn.reply.citations) {
-      const source = add(box,"a",cite.title + " · 摘要 v" + cite.version + " · 查看原文");
+      const source = add(box,"a",cite.title + " · " + (cite.section || "摘要") + " v" + cite.version + " · 查看原文");
       source.href = cite.source;
       source.target = "_blank";
       source.rel = "noopener noreferrer";
+      for (const [label,helpful] of [["有用",true],["无用",false]]) {
+        const vote = add(box,"button",label);
+        vote.className = "quiet";
+        vote.onclick = () => run(async () => {
+          await api("/api/conversations/"+view.id+"/messages/"+turn.messageId+"/feedback","POST",{helpful});
+          notice("已记录本条回答的反馈");
+        });
+      }
     }
   }
 }
@@ -69,7 +77,10 @@ async function newChat() {
 async function init() {
   session = await api("/api/session");
   el("access").hidden = session.authenticated;
-  el("desk").hidden = !session.authenticated;
+  const ops = session.role === "OPS";
+  el("ops").hidden = !ops;
+  if (!ops) { el("versions").replaceChildren(); el("upload").reset(); }
+  el("desk").hidden = !session.authenticated || ops;
   el("location").textContent = session.store?.name || "门店导购工作台";
   if (!session.authenticated) {
     sessionStorage.removeItem("conversation");
@@ -77,6 +88,7 @@ async function init() {
     chat = pending = null;
     return;
   }
+  if (ops) { await loadPolicies(); return; }
   const id = sessionStorage.getItem("conversation");
   if (id) {
     try { render(await api("/api/conversations/" + id)); return; }
@@ -124,6 +136,46 @@ el("compose").onsubmit = event => {
     pending = null;
     el("question").value = "";
     notice("");
+  });
+};
+async function loadPolicies() {
+  const versions = await api("/api/ops/policies");
+  const list = el("versions");
+  list.replaceChildren();
+  if (!versions.length) add(list,"p","暂无资料");
+  for (const v of versions) {
+    const row = add(list,"article");
+    const status = {ACTIVE:"已发布",DRAFT:"待审核",ARCHIVED:"已归档"}[v.status];
+    add(row,"strong",v.title+" · V"+v.version+" · "+status);
+    add(row,"p",[v.key,v.scope,v.expiresOn || "长期有效"].join(" · "));
+    const path = "/api/ops/policies/"+encodeURIComponent(v.key)+"/"+v.version;
+    const original = add(row,"a","查看送审原文");
+    original.href = path;
+    original.target = "_blank";
+    original.rel = "noopener";
+    if (v.status === "ARCHIVED") continue;
+    const publish = v.status === "DRAFT";
+    const action = add(row,"button",publish ? "审核并发布" : "下线");
+    action.className = "quiet";
+    action.onclick = () => run(async () => {
+      await api(path+(publish ? "/publish" : "/withdraw"),"POST");
+      await loadPolicies();
+      notice(publish ? "版本已发布" : "资料已下线");
+    });
+  }
+}
+el("ops-logout").onclick = el("logout").onclick;
+el("upload").onsubmit = event => {
+  event.preventDefault();
+  run(async () => {
+    const form = new FormData(el("upload"));
+    const file = form.get("file");
+    if (file.size > 262144) throw new Error("文件过大，请拆分 Markdown");
+    const draft = {key:form.get("key"),title:form.get("title"),scope:form.get("scope"),
+      expiresOn:form.get("expiresOn") || null,markdown:await file.text()};
+    const result = await api("/api/ops/policies","POST",draft);
+    await loadPolicies();
+    notice("已导入草稿 V"+result.version);
   });
 };
 run(init);

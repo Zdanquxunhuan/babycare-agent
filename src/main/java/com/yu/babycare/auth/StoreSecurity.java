@@ -28,17 +28,25 @@ public class StoreSecurity {
     }
 
     @Bean
-    InMemoryUserDetailsManager accounts(@Value("${babycare.demo-password}") String password) {
+    InMemoryUserDetailsManager accounts(@Value("${babycare.demo-password}") String password,
+            @Value("${babycare.ops-password:}") String opsPassword) {
         var encoder = new BCryptPasswordEncoder();
         var users = STORES.keySet().stream().map(name -> User.withUsername(name)
             .password("{bcrypt}" + encoder.encode(password)).roles("GUIDE").build()).toList();
-        return new InMemoryUserDetailsManager(users);
+        var manager = new InMemoryUserDetailsManager(users);
+        if (!opsPassword.isBlank()) {
+            manager.createUser(User.withUsername("ops").password("{bcrypt}" + encoder.encode(opsPassword))
+                .roles("OPS").build());
+        }
+        return manager;
     }
 
     @Bean
     SecurityFilterChain security(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests(rules -> rules
                 .requestMatchers("/", "/index.html", "/app.js", "/style.css", "/api/session", "/error").permitAll()
+                .requestMatchers("/api/ops/**").hasRole("OPS")
+                .requestMatchers("/api/**").hasRole("GUIDE")
                 .anyRequest().authenticated())
             .requestCache(cache -> cache.disable())
             .exceptionHandling(errors -> errors.authenticationEntryPoint((req,res,err) -> res.setStatus(401)))
@@ -56,6 +64,7 @@ public class StoreSecurity {
     @GetMapping("/api/session")
     public Map<String, Object> session(Authentication auth, CsrfToken csrf) {
         if (auth == null) return Map.of("authenticated", false, "csrf", csrf.getToken());
-        return Map.of("authenticated", true, "store", store(auth), "csrf", csrf.getToken());
+        if (store(auth) == null) return Map.of("authenticated", true, "role", "OPS", "csrf", csrf.getToken());
+        return Map.of("authenticated", true, "role", "GUIDE", "store", store(auth), "csrf", csrf.getToken());
     }
 }

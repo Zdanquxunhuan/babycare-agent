@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: babycare
+      POSTGRES_USER: babycare
+      POSTGRES_PASSWORD: ${BABYCARE_DB_PASSWORD:?Set BABYCARE_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - policy-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U babycare -d babycare"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  policy-data:

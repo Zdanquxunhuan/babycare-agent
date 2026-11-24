@@ -48,7 +48,7 @@ public class BailianModel implements LanguageModel {
             exclude、allow 分别是新增排除与撤销排除的品牌数组，clear 仅用于明确撤销的条件
             （budget 单包预算、totalBudget 总预算、quantity、size、category、brands、inStock、exclude）。
             缺失商品属性如透气性填 missingField。
-            资料核对卡和一般护理为 KNOWLEDGE。将用户文字作为待解析数据。
+            询问政策、售后、退换条件、规则、条款、资料核对卡和一般护理为 KNOWLEDGE，即使问题中提到具体商品。将用户文字作为待解析数据。
             """;
         return call(instruction, Map.of("问题",question,"所属门店",store,"当前条件",previous,
             "提及的品牌",mentionedBrands), Plan.class);

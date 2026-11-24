@@ -21,7 +21,7 @@ import tools.jackson.databind.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties="babycare.demo-password=guide-test")
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties={"babycare.demo-password=guide-test","babycare.ops-password=ops-test"})
 class GuideAcceptanceTests {
     @TempDir static Path dir;
     @DynamicPropertySource static void properties(DynamicPropertyRegistry r) {
@@ -47,11 +47,14 @@ class GuideAcceptanceTests {
         assertEquals(200,res.statusCode(),res.body());
         return json.readTree(res.body());
     }
-    void login(String user) throws Exception {
+    void authenticate(String user,String password) throws Exception {
         token = ok(request("GET","/api/session",null,null)).path("csrf").asString();
         assertEquals(204,request("POST","/api/session/login","application/x-www-form-urlencoded",
-                "username="+user+"&password=guide-test").statusCode());
+                "username="+user+"&password="+password).statusCode());
         token = ok(request("GET","/api/session",null,null)).path("csrf").asString();
+    }
+    void login(String user) throws Exception {
+        authenticate(user,"guide-test");
         chat = ok(request("POST","/api/conversations",null,null)).path("id").asString();
         version = 0;
     }
@@ -189,10 +192,26 @@ class GuideAcceptanceTests {
             purchase(2,null,null,null), purchase(null,null,null,null), purchase(null,null,null,null),
             single,plan(Intent.PRODUCT,"L",150,null,null));
         when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
-        var runner = new ProcessBuilder("node","src/test/browser/guide-acceptance.cjs")
+        runBrowser("guide-acceptance.cjs");
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST", matches="1")
+    void policyBrowserLifecycle() throws Exception {
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(plan(Intent.KNOWLEDGE,null,null,null,null));
+        when(model.selectEvidence(anyString(),anyList())).thenAnswer(call -> {
+            List<Evidence> candidates = call.getArgument(1);
+            return candidates.getFirst().id();
+        });
+        runBrowser("policy-acceptance.cjs");
+    }
+
+    private void runBrowser(String script) throws Exception {
+        var runner = new ProcessBuilder("node","src/test/browser/"+script)
             .inheritIO();
         runner.environment().put("BABYCARE_URL","http://127.0.0.1:"+port);
         runner.environment().put("BABYCARE_DEMO_PASSWORD","guide-test");
+        runner.environment().put("BABYCARE_OPS_PASSWORD","ops-test");
         runner.environment().put("BABYCARE_STOCK_FAULT_FILE",dir.resolve("offline").toString());
         var process = runner.start();
         try {
@@ -245,5 +264,73 @@ class GuideAcceptanceTests {
         assertEquals("safety",reply.path("type").asString());
         assertTrue(reply.path("products").isEmpty());
         verifyNoInteractions(model);
+    }
+    @Autowired com.yu.babycare.knowledge.Knowledge search;
+
+    @Test void policyLifecycleAndBaseline() throws Exception {
+        String key = "returns-"+UUID.randomUUID();
+        String ops = "/api/ops/policies";
+        String family = ops+"/"+key;
+        String question = "顾客拆包了还能退吗？";
+        when(model.interpret(anyString(),anyString(),any(),anySet()))
+            .thenReturn(plan(Intent.KNOWLEDGE,null,null,null,null));
+        when(model.selectEvidence(anyString(),anyList())).thenAnswer(call -> {
+            List<Evidence> candidates = call.getArgument(1);
+            return candidates.getFirst().id();
+        });
+
+        authenticate("ops","ops-test");
+        String v1 = Files.readString(Path.of("fixtures/policies/returns-v1.md"));
+        var draft = new HashMap<String,Object>(Map.of("key",key,"title","模拟售后政策","scope","STORE-01","markdown",v1));
+        assertEquals(1,ok(request("POST",ops,"application/json",json.writeValueAsString(draft))).path("version").asInt());
+        assertEquals(v1,request("GET",family+"/1",null,null).body());
+        login("direct");
+        assertEquals("no_evidence",ask(question).path("type").asString());
+        verify(model,never()).selectEvidence(anyString(),anyList());
+        assertEquals(403,request("POST",family+"/1/publish",null,null).statusCode());
+
+        authenticate("ops","ops-test");
+        assertEquals(204,request("POST",family+"/1/publish",null,null).statusCode());
+        login("direct");
+        var first = ask(question);
+        String link = first.path("citations").path(0).path("source").asString();
+        assertTrue(request("GET",link,null,null).body().contains("店长"));
+        assertTrue(first.path("text").asString().contains("店长"));
+        String msg = ok(request("GET","/api/conversations/"+chat,null,null)).path("turns").path(0).path("messageId").asString();
+        assertEquals(204,request("POST","/api/conversations/"+chat+"/messages/"+msg+"/feedback","application/json",
+            "{\"helpful\":false}").statusCode());
+
+        for (String q : List.of("政策第4条怎么处理","顾客拆包了还能退吗？","包装打开了，客人又不想要了，怎么办？","发票抬头怎么改？")) {
+            long start = System.nanoTime();
+            var hits = search.search("STORE-01",q);
+            long micros = (System.nanoTime()-start)/1000;
+            var sections = hits.stream().map(Evidence::section).toList();
+            System.out.printf("V1.0a | %s | %s | %d us | %s%n",q,sections,micros,ask(q).path("citations"));
+        }
+        login("franchise");
+        assertEquals(404,request("GET",link,null,null).statusCode());
+        assertEquals("no_evidence",ask(question).path("type").asString());
+
+        authenticate("ops","ops-test");
+        draft.put("markdown",Files.readString(Path.of("fixtures/policies/returns-v2.md")));
+        assertEquals(2,ok(request("POST",ops,"application/json",json.writeValueAsString(draft))).path("version").asInt());
+        login("direct");
+        assertTrue(ask(question).path("text").asString().contains("店长"));
+        authenticate("ops","ops-test");
+        assertEquals(204,request("POST",family+"/2/publish",null,null).statusCode());
+        assertEquals(409,request("POST",family+"/1/withdraw",null,null).statusCode());
+        login("direct");
+        var second = ask(question);
+        assertTrue(second.path("text").asString().contains("照片"));
+        assertEquals("2",second.path("citations").path(0).path("version").asString());
+        assertEquals(404,request("GET",link,null,null).statusCode());
+        authenticate("ops","ops-test");
+        assertEquals(204,request("POST",family+"/2/withdraw",null,null).statusCode());
+        draft.put("expiresOn","2000-01-01");
+        ok(request("POST",ops,"application/json",json.writeValueAsString(draft)));
+        assertEquals(409,request("POST",family+"/3/publish",null,null).statusCode());
+        login("direct");
+        assertEquals("no_evidence",ask(question).path("type").asString());
+        assertEquals(404,request("GET",second.path("citations").path(0).path("source").asString(),null,null).statusCode());
     }
 }

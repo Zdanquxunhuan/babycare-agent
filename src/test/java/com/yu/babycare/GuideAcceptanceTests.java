@@ -291,6 +291,32 @@ class GuideAcceptanceTests {
         assertTrue(ask("绒朵两包总价218元以内，有活动吗？").path("products").isEmpty());
     }
 
+    @Test void resumeCheckpointFromBeforePromotions() throws Exception {
+        login("direct");
+        UUID oldMessage = UUID.randomUUID();
+        String context = """
+            {"conditions":{"size":"L","quantity":2,"category":"纸尿裤","budget":null,"totalBudget":220,
+            "pendingBudget":null,"inStock":false,"brands":[],"excluded":[]},"pendingQuestion":null}
+            """;
+        String oldReply = """
+            {"type":"products","text":"历史报价","products":[],"citations":[],"quantity":2,"totals":{},"trace":[]}
+            """;
+        db.update("UPDATE bc_chat_checkpoint SET version=1,context_json=? WHERE chat_id=?",context,chat);
+        db.update("INSERT INTO bc_chat_turn (chat_id,version,message_id,question,reply_json) VALUES (?,1,?,?,?)",
+            chat,oldMessage.toString(),"之前的查询",oldReply);
+        var resumed = ok(request("POST","/api/conversations/current",null,null));
+        assertEquals(chat,resumed.path("id").asString());
+        assertEquals("历史报价",resumed.path("turns").path(0).path("reply").path("text").asString());
+        version=1;
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenAnswer(call -> {
+            Context restored=call.getArgument(2);
+            assertNull(restored.conditions().promotions());
+            return new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,null,null,null,true);
+        });
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.STOCK);
+        assertEquals(218,ask("那本店今天有活动吗？").path("totals").path("DEMO-008").asInt());
+    }
+
     @Autowired JdbcTemplate db;
     @Autowired InMemoryUserDetailsManager accounts;
 

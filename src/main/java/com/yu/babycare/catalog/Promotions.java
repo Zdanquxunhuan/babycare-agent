@@ -29,13 +29,15 @@ public class Promotions {
         }
     }
 
-    private final Rule rule;
+    private final ObjectMapper mapper;
+    private final Path source;
     private final Path fault;
     private final Clock clock;
     public Promotions(Clock clock, ObjectMapper mapper, @Value("${babycare.fixtures:fixtures}") Path fixtures,
                       @Value("${babycare.promotion-fault-file:}") String flag) {
         this.clock = clock;
-        rule = mapper.readValue(fixtures.resolve("promotion-demo.json").toFile(), Rule.class);
+        this.mapper = mapper;
+        source = fixtures.resolve("promotion-demo.json");
         fault = flag.isBlank() ? null : Path.of(flag);
     }
 
@@ -44,6 +46,12 @@ public class Promotions {
         if (fault != null && Files.exists(fault))
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"活动查询暂不可用");
         var today = LocalDate.now(clock);
-        return rule.applies(store,candidates,quantity,today) ? Optional.of(rule) : Optional.empty();
+        try (var input = Files.newInputStream(source)) {
+            var rule = mapper.readValue(input,Rule.class);
+            if (rule == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"活动样本为空");
+            return rule.applies(store,candidates,quantity,today) ? Optional.of(rule) : Optional.empty();
+        } catch (java.io.IOException | tools.jackson.core.JacksonException ex) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"活动资料暂不可读",ex);
+        }
     }
 }

@@ -23,8 +23,8 @@ public class Catalog {
                         BigDecimal price, int packs, String snapshot, Instant queriedAt) {}
     public record Filter(String category, String size, BigDecimal budget, boolean inStock,
                          Set<String> brands, Set<String> excluded, Integer quantity, BigDecimal totalBudget,
-                         BigDecimal pendingBudget) {
-        public static Filter empty() { return new Filter(null, null, null, false, Set.of(), Set.of(),null,null,null); }
+                         BigDecimal pendingBudget, Boolean promotions) {
+        public static Filter empty() { return new Filter(null, null, null, false, Set.of(), Set.of(),null,null,null,null); }
         boolean matchesProduct(Offer row) {
             return (category == null || category.equals(row.category()))
                 && (size == null || size.equalsIgnoreCase(row.size()))

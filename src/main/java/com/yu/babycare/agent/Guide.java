@@ -57,7 +57,12 @@ public class Guide {
      * @param trace     规划步骤日志，便于排查 / planning step log for troubleshooting
      */
     public record Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
-                        Integer quantity, Map<String,BigDecimal> totals, List<String> trace) {
+                        Integer quantity, Map<String,BigDecimal> totals, List<String> trace,
+                        Map<String,PurchasePlanner.Quote> quotes) {
+        public Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
+                     Integer quantity, Map<String,BigDecimal> totals, List<String> trace) {
+            this(type,text,products,citations,quantity,totals,trace,Map.of());
+        }
         /** 便捷构造：非购买类回复没有包数与合计。/ Convenience constructor for replies without quantity or totals. */
         Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations) {
             this(type,text,products,citations,null,Map.of(),List.of());
@@ -169,6 +174,8 @@ public class Guide {
         if (filter.pendingBudget()!=null)
             return new Result(filter,Reply.message("clarify",filter.pendingBudget()+" 元是每包上限，还是购买这些商品的总预算？"));
         // 有总预算却不知道买几包，无法核算。/ A total budget without a pack count cannot be verified.
+        if (Boolean.TRUE.equals(filter.promotions()) && filter.quantity()==null)
+            return new Result(filter,Reply.message("clarify","要核实本店活动，顾客想买同款几包？"));
         if (filter.totalBudget()!=null && filter.quantity()==null)
             return new Result(filter,Reply.message("clarify","按这个总预算，顾客想买同款几包？"));
         // 要推荐尺码但还没拿到尺码。/ Size recommendation requested without a size.
@@ -181,7 +188,7 @@ public class Guide {
             var reply = purchases.run(store, filter);
             if (!reply.products().isEmpty())
                 reply = new Reply(reply.type(),describeMissing(reply.text(),missing),reply.products(),
-                    reply.citations(),reply.quantity(),reply.totals(),reply.trace());
+                    reply.citations(),reply.quantity(),reply.totals(),reply.trace(),reply.quotes());
             return new Result(filter,reply);
         }
         try {
@@ -302,7 +309,7 @@ public class Guide {
             p.inStock()!=null ? p.inStock() : old.inStock() && !clear.contains("inStock"),
             // 品牌集合同理：本轮优先，clear 置空，否则继承。/ Brands: this turn wins, clear empties them, otherwise inherit.
             p.brands()!=null ? p.brands() : clear.contains("brands") ? Set.of() : old.brands(), Set.copyOf(excluded),
-            quantity,total,pending);
+            quantity,total,pending,p.promotions()!=null ? p.promotions() : old.promotions());
     }
 
     /**

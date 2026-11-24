@@ -15,11 +15,11 @@ class PurchasePlannerTests {
     private final LanguageModel model = mock(LanguageModel.class);
     private final Store store = new Store("STORE-01","直营");
     private final Catalog.Filter filter = new Catalog.Filter("纸尿裤","L",null,false,Set.of(),Set.of(),
-        2,BigDecimal.valueOf(220),null);
+        2,BigDecimal.valueOf(220),null,null);
 
     @Test void insufficientStepsStopBeforeNextTool() {
         when(catalog.search(store, filter)).thenReturn(List.of("DEMO-003"));
-        var planner = new PurchasePlanner(catalog,model,1,Duration.ofSeconds(3));
+        var planner = new PurchasePlanner(catalog,mock(com.yu.babycare.catalog.Promotions.class),model,1,Duration.ofSeconds(3));
         assertEquals("planning_limit",planner.run(store,filter).type());
         verify(catalog).search(store,filter);
         verifyNoMoreInteractions(catalog);
@@ -27,7 +27,7 @@ class PurchasePlannerTests {
     }
 
     @Test void expiredBudgetStopsBeforeSearch() {
-        var planner = new PurchasePlanner(catalog,model,4,Duration.ZERO);
+        var planner = new PurchasePlanner(catalog,mock(com.yu.babycare.catalog.Promotions.class),model,4,Duration.ZERO);
         assertEquals("planning_limit",planner.run(store,filter).type());
         verifyNoInteractions(model,catalog);
     }

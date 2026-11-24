@@ -7,7 +7,9 @@ import java.math.BigDecimal;
 import java.net.*;
 import java.net.http.*;
 import java.nio.file.*;
+import java.time.*;
 import java.util.*;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import java.util.concurrent.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.User;
@@ -26,8 +28,13 @@ import static org.mockito.Mockito.*;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties={"babycare.demo-password=guide-test","babycare.ops-password=ops-test"})
 class GuideAcceptanceTests {
+    @TestBean Clock storeClock;
+    static Clock storeClock() {
+        return Clock.fixed(Instant.parse("2026-11-24T01:00:00Z"),ZoneId.of("Asia/Shanghai"));
+    }
     @TempDir static Path dir;
     @DynamicPropertySource static void properties(DynamicPropertyRegistry r) {
+        r.add("babycare.promotion-fault-file", () -> dir.resolve("promotions-offline").toString());
         r.add("babycare.stock-fault-file", () -> dir.resolve("offline").toString());
     }
     @LocalServerPort int port;
@@ -252,6 +259,7 @@ class GuideAcceptanceTests {
         runner.environment().put("BABYCARE_URL","http://127.0.0.1:"+port);
         runner.environment().put("BABYCARE_DEMO_PASSWORD","guide-test");
         runner.environment().put("BABYCARE_OPS_PASSWORD","ops-test");
+        runner.environment().put("BABYCARE_PROMOTION_FAULT_FILE",dir.resolve("promotions-offline").toString());
         runner.environment().put("BABYCARE_STOCK_FAULT_FILE",dir.resolve("offline").toString());
         var process = runner.start();
         try {
@@ -261,6 +269,28 @@ class GuideAcceptanceTests {
             if (process.isAlive()) process.destroyForcibly();
         }
     }
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST",matches="1")
+    void promotionFollowUpInBrowser() throws Exception {
+        var initial = purchase(2,"220",Scope.TOTAL,null);
+        var activity = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,null,null,null,true);
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(initial,activity,activity);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE,Check.PROMOTION,Check.STOCK);
+        runBrowser("promotion-acceptance.cjs");
+    }
+
+    @Test void promotionBudgetAndStoreBoundaries() throws Exception {
+        var promo = new Plan(Intent.PRODUCT,null,"纸尿裤","L",null,null,Set.of("绒朵"),null,null,null,null,
+            2,new BigDecimal("218"),Scope.TOTAL,true);
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(promo);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        login("direct");
+        var direct = ask("绒朵两包总价218元以内，有活动吗？");
+        assertEquals(218,direct.path("totals").path("DEMO-008").asInt());
+        login("franchise");
+        assertTrue(ask("绒朵两包总价218元以内，有活动吗？").path("products").isEmpty());
+    }
+
     @Autowired JdbcTemplate db;
     @Autowired InMemoryUserDetailsManager accounts;
 

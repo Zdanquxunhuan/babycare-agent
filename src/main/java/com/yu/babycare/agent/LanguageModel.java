@@ -9,10 +9,17 @@ import java.math.BigDecimal;
 public interface LanguageModel {
     enum Intent { PRODUCT, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
     enum Scope { UNIT, TOTAL }
-    enum Check { PRICE, STOCK }
+    enum Check { PRICE, STOCK, PROMOTION }
     record Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                 Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
-                Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope) {
+                Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,
+                Boolean promotions) {
+        public Plan(Intent intent, String store, String category, String size, BigDecimal budget,
+                    Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
+                    Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope) {
+            this(intent,store,category,size,budget,inStock,brands,exclude,allow,clear,missingField,
+                quantity,totalBudget,scope,null);
+        }
         public Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                     Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
                     Set<String> clear, String missingField) {

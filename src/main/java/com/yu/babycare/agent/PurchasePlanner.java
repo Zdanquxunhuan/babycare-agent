@@ -2,6 +2,7 @@ package com.yu.babycare.agent;
 
 import com.yu.babycare.auth.StoreSecurity.Store;
 import com.yu.babycare.catalog.Catalog;
+import com.yu.babycare.catalog.Promotions;
 import com.yu.babycare.catalog.Catalog.Filter;
 import com.yu.babycare.catalog.Catalog.Offer;
 import com.yu.babycare.agent.LanguageModel.Check;
@@ -16,15 +17,19 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class PurchasePlanner {
+    public record Quote(String name, BigDecimal regularTotal, String activity, BigDecimal discount,
+                        BigDecimal payable, boolean meetsBudget) {}
     private final Catalog catalog;
+    private final Promotions promotions;
     private final LanguageModel model;
     private final int maxSteps;
     private final Duration timeout;
 
-    public PurchasePlanner(Catalog catalog, LanguageModel model,
-            @Value("${babycare.purchase.max-steps:4}") int maxSteps,
+    public PurchasePlanner(Catalog catalog, Promotions promotions, LanguageModel model,
+            @Value("${babycare.purchase.max-steps:5}") int maxSteps,
             @Value("${babycare.purchase.timeout:45s}") Duration timeout) {
         this.catalog = catalog;
+        this.promotions = promotions;
         this.model = model;
         this.maxSteps = maxSteps;
         this.timeout = timeout;
@@ -38,12 +43,19 @@ public class PurchasePlanner {
         trace.add("本店商品检索 · " + candidates.size() + " 款候选");
         if (candidates.isEmpty()) return stop("empty","本店无符合品类、尺码及品牌条件的商品。",trace);
         EnumSet<Check> remaining = EnumSet.of(Check.STOCK);
-        if (filter.totalBudget()!=null || filter.budget()!=null) remaining.add(Check.PRICE);
+        boolean checkActivity = Boolean.TRUE.equals(filter.promotions());
+        if (checkActivity) remaining.add(Check.PROMOTION);
+        if (checkActivity || filter.totalBudget()!=null || filter.budget()!=null) remaining.add(Check.PRICE);
+        boolean first = true;
+        boolean activityUnavailable = false;
+        Optional<Promotions.Rule> rule = Optional.empty();
+        Map<String,BigDecimal> verifiedPrices = new HashMap<>();
+        List<Offer> inStock = List.of();
         List<Offer> rows = List.of();
         while (!remaining.isEmpty()) {
             if (trace.size()>=maxSteps || remainingMillis(deadline)<=0) return limited(trace);
             Check next = remaining.iterator().next();
-            if (remaining.size()>1) {
+            if (first && remaining.size()>1) {
                 try {
                     next = model.firstCheck(filter, candidates.size(), remainingMillis(deadline));
                 } catch (ResponseStatusException ex) {
@@ -53,6 +65,21 @@ public class PurchasePlanner {
                     return stop("planning_failed","无法确认下一步核验工具，请重试。",trace);
                 trace.add("选择核验顺序 · " + label(next) + "优先");
                 if (trace.size()>=maxSteps || remainingMillis(deadline)<=0) return limited(trace);
+            }
+
+            first = false;
+            remaining.remove(next);
+            if (next==Check.PROMOTION) {
+                try {
+                    rule = promotions.lookup(store,candidates,filter.quantity());
+                    trace.add(rule.isPresent() ? "活动核验 · 有适用活动" : "活动核验 · 无适用活动");
+                } catch (ResponseStatusException ex) {
+                    if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE) throw ex;
+                    activityUnavailable = true;
+                    trace.add("活动查询失败 · 使用已核实普通价");
+                }
+                if (remainingMillis(deadline)<=0) return limited(trace);
+                continue;
             }
 
             List<Offer> checked;
@@ -66,6 +93,11 @@ public class PurchasePlanner {
             if (remainingMillis(deadline)<=0) return limited(trace);
             if (next==Check.STOCK) {
                 rows = checked.stream().filter(row -> row.packs()>=filter.quantity()).toList();
+                inStock = rows;
+            } else if (checkActivity) {
+                // A regular total over budget may still qualify after the promotion check.
+                checked.forEach(row -> verifiedPrices.put(row.sku(),row.price()));
+                rows = checked;
             } else {
                 rows = checked.stream().filter(row -> within(row.price(),filter.budget())
                     && within(total(row,filter.quantity()),filter.totalBudget())).toList();
@@ -80,13 +112,50 @@ public class PurchasePlanner {
                 return stop("empty", reason + "要调整条件吗？", trace);
             }
             candidates = rows.stream().map(Offer::sku).toList();
-            remaining.remove(next);
         }
+        if (checkActivity) return promotionReply(filter,inStock,verifiedPrices,rule,activityUnavailable,trace);
         Map<String,BigDecimal> totals = new LinkedHashMap<>();
         for (Offer row : rows) totals.put(row.sku(), total(row,filter.quantity()));
         trace.add("完成 · 已核实购买数量及合计");
         return new Guide.Reply("products","本店有 " + rows.size() + " 款可按同款 "
             + filter.quantity() + " 包购买。", rows,List.of(),filter.quantity(),totals,trace);
+    }
+
+    private static Guide.Reply promotionReply(Filter filter, List<Offer> inStock, Map<String,BigDecimal> prices,
+                                              Optional<Promotions.Rule> rule, boolean unavailable, List<String> trace) {
+        List<Offer> matches = new ArrayList<>();
+        Map<String,BigDecimal> totals = new LinkedHashMap<>();
+        Map<String,Quote> quotes = new LinkedHashMap<>();
+        for (Offer row : inStock) {
+            BigDecimal price = prices.get(row.sku());
+            if (price == null) continue;
+            BigDecimal quantity = BigDecimal.valueOf(filter.quantity());
+            BigDecimal regular = price.multiply(quantity);
+            var applicable = rule.filter(r -> r.sku().equals(row.sku()));
+            BigDecimal discount = applicable.map(r -> r.discount().min(regular)).orElse(BigDecimal.ZERO);
+            BigDecimal payable = regular.subtract(discount);
+            boolean fits = within(payable,filter.totalBudget())
+                && (filter.budget()==null || payable.compareTo(filter.budget().multiply(quantity))<=0);
+            if (fits) {
+                matches.add(new Offer(row.sku(),row.name(),row.brand(),row.category(),row.size(),row.pieces(),
+                    price,row.packs(),row.snapshot(),row.queriedAt()));
+                totals.put(row.sku(),payable);
+            }
+            if (fits || unavailable) {
+                quotes.put(row.sku(),new Quote(row.name(),regular,applicable.map(Promotions.Rule::title).orElse(null),
+                    unavailable ? null : discount,unavailable ? null : payable,fits));
+            }
+        }
+        String message;
+        if (unavailable) {
+            message = "优惠待确认。按已核实的普通价，有 " + matches.size() + " 款符合当前购买条件。";
+        } else {
+            message = matches.isEmpty() ? "本店核验活动后没有符合当前预算的有货商品。"
+                : "本店核验活动后有 " + matches.size() + " 款有货商品符合当前购买条件。";
+        }
+        trace.add("完成 · 复核购买数量及预算");
+        return new Guide.Reply(matches.isEmpty() ? "empty" : "products",message,matches,List.of(),
+            filter.quantity(),totals,trace,quotes);
     }
 
     private static BigDecimal total(Offer row, int quantity) {
@@ -102,7 +171,11 @@ public class PurchasePlanner {
     }
 
     private static String label(Check check) {
-        return check==Check.PRICE ? "价格核验" : "库存核验";
+        return switch (check) {
+            case PRICE -> "价格核验";
+            case STOCK -> "库存核验";
+            case PROMOTION -> "活动核验";
+        };
     }
 
     private static Guide.Reply limited(List<String> trace) {

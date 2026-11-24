@@ -206,9 +206,46 @@ class GuideAcceptanceTests {
         runBrowser("policy-acceptance.cjs");
     }
 
-    private void runBrowser(String script) throws Exception {
-        var runner = new ProcessBuilder("node","src/test/browser/"+script)
-            .inheritIO();
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_COMPARE", matches="1")
+    void invoiceWithoutEvidenceInHybridBrowser() throws Exception {
+        // Replay the two qwen-plus response bodies at the HTTP boundary, including the missing id.
+        var adapter = new BailianModel(json, URI.create("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"),
+            "qwen-plus","test-only");
+        var transport = mock(HttpClient.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(adapter,"http",transport);
+        var intent = completion("{\"intent\":\"KNOWLEDGE\"}");
+        var selection = completion("{}");
+        when(transport.send(any(HttpRequest.class), org.mockito.ArgumentMatchers.<HttpResponse.BodyHandler<String>>any()))
+            .thenReturn(intent, selection);
+
+        String invoice = "发票抬头怎么改？";
+        when(model.interpret(eq(invoice),eq("STORE-01"),any(),anySet())).thenAnswer(call ->
+            adapter.interpret(invoice,"STORE-01",call.getArgument(2),call.getArgument(3)));
+        when(model.selectEvidence(eq(invoice),anyList())).thenAnswer(call -> {
+            List<Evidence> candidates = call.getArgument(1);
+            assertEquals(Set.of("模拟售后政策 / 第4条 已拆包","模拟售后政策 / 第5条 未拆封"),
+                candidates.stream().map(Evidence::section).collect(java.util.stream.Collectors.toSet()));
+            return adapter.selectEvidence(invoice,candidates);
+        });
+
+        runBrowser("policy-acceptance.cjs","--invoice-only");
+        verify(model).selectEvidence(eq(invoice),anyList());
+        verify(transport,times(2)).send(any(HttpRequest.class),any());
+    }
+
+    private HttpResponse<String> completion(String content) {
+        @SuppressWarnings("unchecked") HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(json.writeValueAsString(
+            Map.of("choices",List.of(Map.of("message",Map.of("content",content))))));
+        return response;
+    }
+
+    private void runBrowser(String script,String... arguments) throws Exception {
+        var command = new ArrayList<>(List.of("node","src/test/browser/"+script));
+        command.addAll(List.of(arguments));
+        var runner = new ProcessBuilder(command).inheritIO();
         runner.environment().put("BABYCARE_URL","http://127.0.0.1:"+port);
         runner.environment().put("BABYCARE_DEMO_PASSWORD","guide-test");
         runner.environment().put("BABYCARE_OPS_PASSWORD","ops-test");

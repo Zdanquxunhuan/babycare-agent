@@ -23,6 +23,12 @@ jobs:
         run: |
           docker compose --profile hybrid up -d --build --wait --wait-timeout 1200
       - run: bash mvnw -B -Dtest=HybridComparisonTests test
+      - name: Verify the guide page with a replay of the Bailian no-evidence response
+        env:
+          SPRING_PROFILES_ACTIVE: rag,hybrid
+        run: |
+          npm install --prefix "$RUNNER_TEMP/browser" playwright@1.56.1
+          CHROME_PATH="$(command -v google-chrome)" NODE_PATH="$RUNNER_TEMP/browser/node_modules" bash mvnw -B "-Dtest=GuideAcceptanceTests#invoiceWithoutEvidenceInHybridBrowser" test
       - uses: actions/upload-artifact@v4
         with:
           name: hybrid-comparison

@@ -192,10 +192,26 @@ class GuideAcceptanceTests {
             purchase(2,null,null,null), purchase(null,null,null,null), purchase(null,null,null,null),
             single,plan(Intent.PRODUCT,"L",150,null,null));
         when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
-        var runner = new ProcessBuilder("node","src/test/browser/guide-acceptance.cjs")
+        runBrowser("guide-acceptance.cjs");
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST", matches="1")
+    void policyBrowserLifecycle() throws Exception {
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(plan(Intent.KNOWLEDGE,null,null,null,null));
+        when(model.selectEvidence(anyString(),anyList())).thenAnswer(call -> {
+            List<Evidence> candidates = call.getArgument(1);
+            return candidates.getFirst().id();
+        });
+        runBrowser("policy-acceptance.cjs");
+    }
+
+    private void runBrowser(String script) throws Exception {
+        var runner = new ProcessBuilder("node","src/test/browser/"+script)
             .inheritIO();
         runner.environment().put("BABYCARE_URL","http://127.0.0.1:"+port);
         runner.environment().put("BABYCARE_DEMO_PASSWORD","guide-test");
+        runner.environment().put("BABYCARE_OPS_PASSWORD","ops-test");
         runner.environment().put("BABYCARE_STOCK_FAULT_FILE",dir.resolve("offline").toString());
         var process = runner.start();
         try {

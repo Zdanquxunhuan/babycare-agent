@@ -35,4 +35,6 @@ jobs:
           cache: maven
       - run: npm install --prefix "$RUNNER_TEMP/browser" playwright@1.56.1
       - run: echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Verify original standalone demo database
+        run: bash mvnw -B -Dspring.profiles.active=default "-Dtest=GuideAcceptanceTests#policyLifecycleAndBaseline" test
       - run: NODE_PATH="$RUNNER_TEMP/browser/node_modules" bash mvnw -B verify

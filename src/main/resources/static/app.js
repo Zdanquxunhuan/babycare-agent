@@ -79,6 +79,7 @@ async function init() {
   el("access").hidden = session.authenticated;
   const ops = session.role === "OPS";
   el("ops").hidden = !ops;
+  if (!ops) { el("versions").replaceChildren(); el("upload").reset(); }
   el("desk").hidden = !session.authenticated || ops;
   el("location").textContent = session.store?.name || "门店导购工作台";
   if (!session.authenticated) {

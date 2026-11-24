@@ -44,6 +44,8 @@ public class BailianModel implements LanguageModel {
             例：两包总共220元 -> quantity:2,totalBudget:220；两包预算220元 -> quantity:2,budget:220；
             结合上轮待答问题理解简短续答；若用户明确换了话题，按本轮意图处理。
             仅回答“是总价” -> intent:PRODUCT,scope:TOTAL。补充数量或改预算均为 PRODUCT。
+            询问本店活动、折扣或优惠后能否满足预算（包括追问“那本店今天有活动吗”）属 PRODUCT，promotions=true。
+            明确改看普通价则 promotions=false，其他情况省略。活动金额、适用商品和有效期由工具查询。
             inStock 是布尔值。“提及的品牌”是从本店目录匹配到的原文。查询指定品牌时将其原样写入 brands，
             比较多款时将所有比较品牌写入 brands。明确要求排除或撤销排除时使用对应字段。
             exclude、allow 分别是新增排除与撤销排除的品牌数组，clear 仅用于明确撤销的条件
@@ -59,7 +61,9 @@ public class BailianModel implements LanguageModel {
     record Selection(String id) {}
     record Next(Check tool) {}
     public Check firstCheck(Filter conditions, int candidates, long remainingMillis) {
-        return call("为同款多包购买选择下一步工具。当前商品搜索已完成。只能返回 JSON 对象，tool 为 PRICE 或 STOCK。优先执行预计能更快缩小候选集合的核验。",
+        String allowed = Boolean.TRUE.equals(conditions.promotions()) ? "PRICE、STOCK 或 PROMOTION" : "PRICE 或 STOCK";
+        return call("为同款多包购买选择第一项只读核验工具。当前商品搜索已完成。只能返回 JSON 对象，tool 为 "
+            + allowed + "。PRICE 查普通价，STOCK 查库存，PROMOTION 查本店活动。依据购买条件选择。",
             Map.of("条件",conditions,"候选数",candidates), Next.class, remainingMillis).tool();
     }
     public String selectEvidence(String question, List<Evidence> evidence) {

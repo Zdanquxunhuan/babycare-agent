@@ -42,10 +42,20 @@ function render(view) {
       for (const item of rows) {
         const row = add(table,"tr");
         [item.name,"¥" + item.price,item.packs + " 包"].forEach(value => add(row,"td",value));
-        if (turn.reply.quantity) add(row,"td",item.price + " × " + turn.reply.quantity + " = " + turn.reply.totals[item.sku] + " 元");
+        if (turn.reply.quantity) {
+          const quote = turn.reply.quotes?.[item.sku];
+          let summary = item.price + " × " + turn.reply.quantity + " = " + (quote?.regularTotal ?? turn.reply.totals[item.sku]) + " 元";
+          if (quote?.activity) summary += "；" + quote.activity + "，减 " + quote.discount + " 元，合计 " + quote.payable + " 元";
+          else if (quote) summary += quote.payable == null ? "（优惠待确认）" : "（无适用活动）";
+          add(row,"td",summary);
+        }
       }
       add(box,"small","模拟门店数据 · 快照 " + rows[0].snapshot + " · 本次查询 " +
         new Date(rows[0].queriedAt).toLocaleString("zh-CN"));
+    }
+    for (const quote of Object.values(turn.reply.quotes || {})) {
+      if (quote.payable == null && !quote.meetsBudget)
+        add(box,"p",quote.name + "：普通价合计 " + quote.regularTotal + " 元，超出预算，优惠待确认。");
     }
     if (turn.reply.trace?.length) {
       const details = add(box,"details");

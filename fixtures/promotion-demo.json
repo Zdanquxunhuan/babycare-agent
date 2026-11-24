@@ -1,0 +1,9 @@
+{
+  "title": "模拟直营店同款满两包减20元",
+  "storeId": "STORE-01",
+  "sku": "DEMO-008",
+  "startsOn": "2026-01-01",
+  "endsOn": "2027-12-31",
+  "minimumQuantity": 2,
+  "discount": 20
+}

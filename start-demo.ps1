@@ -16,7 +16,7 @@ try {
             $env:DASHSCOPE_API_KEY = [Net.NetworkCredential]::new('', $secret).Password
         }
     }
-    & $javaCommand -jar $jar "--server.port=$Port" "--babycare.stock-fault-file=target/stock-offline.flag"
+    & $javaCommand -jar $jar "--server.port=$Port" "--babycare.stock-fault-file=target/stock-offline.flag" "--babycare.promotion-fault-file=target/promotion-offline.flag"
     if ($LASTEXITCODE -ne 0) { throw "Java 服务退出，状态码 $LASTEXITCODE" }
 } finally {
     $env:DASHSCOPE_API_KEY = $initialKey

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:0.8.1-pg16
     environment:
       POSTGRES_DB: babycare
       POSTGRES_USER: babycare
@@ -14,5 +14,17 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  bge:
+    profiles: [hybrid]
+    build: ./models
+    ports: ["127.0.0.1:58081:8080"]
+    volumes: ["bge-cache:/data"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=4)"]
+      interval: 5s
+      timeout: 5s
+      start_period: 20m
+      retries: 4
 volumes:
+  bge-cache:
   policy-data:

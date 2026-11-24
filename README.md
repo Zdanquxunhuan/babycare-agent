@@ -75,3 +75,38 @@ $env:SPRING_PROFILES_ACTIVE = 'rag'
 | 顾客拆包了还能退吗？ | 第4条 已拆包 |
 | 包装打开了，客人又不想要了，怎么办？ | 第4条 已拆包；记录词法检索漏召回或被“原包装”误导的情况 |
 | 发票抬头怎么改？ | 无答案 |
+
+## V1.0b 本地混合检索与精排
+
+从 V1.0a 升级时沿用同一 Compose 项目和 PostgreSQL 16 数据卷。数据库镜像包含 pgvector；外部数据库需要安装 vector 扩展，并由有权限的账号在 BabyCare 数据库启用它。Windows PowerShell 在项目根目录运行，先按上一节设置 JDK 21、数据库和运营密码：
+
+```powershell
+docker compose --profile hybrid up -d --build --wait
+Invoke-RestMethod http://localhost:58081/health
+.\mvnw.cmd "-DskipTests" package
+$env:SPRING_PROFILES_ACTIVE = 'rag,hybrid'
+.\start-demo.ps1
+```
+
+首次启动要下载两个固定版本的 INT8 ONNX 模型（权重合计约 1.14 GB），后续复用 Docker 缓存卷。健康检查返回 `ready: true` 后再启动 Java。Windows 上需确保 Docker Desktop 有足够内存；下载或启动缓慢时可用 `docker compose logs -f bge` 查看进度。Java 默认访问本机 58081，入库和召回共用 1024 维 BGE-M3，精排使用 bge-reranker-v2-m3。两者均在本地 CPU 推理。导购的意图判断及最终证据选择继续使用原有百炼适配器。
+
+**用已有数据验收。** 用 V1.0a 的运营网页发布模拟 V1 政策，以直营店导购提问“包装打开了，客人又不想要了，怎么办？”可与下方的固定快照实验对照。应用启动时为已发布的旧片段补向量，重复启动复用已有索引。混合模式下，发布新版及向量写入在同一事务，编码失败可重试，旧版继续生效。运营端和导购端应连接同一个部署。下线、到期及门店范围对两路召回都生效。内置公开洁手摘要保留原词法入口；政策 Markdown 同时走词法和向量。
+
+**复跑四题对照。** 使用独立评测数据库。下例适用于上面的默认 Compose 端口和账号。创建库的命令只需执行一次；评测事务结束会回滚模拟政策，可以重复跑同一组问题。
+
+```powershell
+docker compose exec -T postgres createdb -U babycare babycare_eval
+$previousUrl = $env:BABYCARE_DB_URL
+try {
+    $env:BABYCARE_DB_URL = 'jdbc:postgresql://localhost:55432/babycare_eval'
+    $env:BABYCARE_COMPARE = '1'
+    .\mvnw.cmd "-Dtest=HybridComparisonTests" test
+    if ($LASTEXITCODE -ne 0) { throw '混合检索对照未通过，请查看测试日志' }
+    Get-Content target/hybrid-comparison.md -Encoding UTF8
+} finally {
+    $env:BABYCARE_DB_URL = $previousUrl
+    Remove-Item Env:BABYCARE_COMPARE -ErrorAction SilentlyContinue
+}
+```
+
+有 `DASHSCOPE_API_KEY` 时，评测会把模拟样本的候选送到当前百炼模型，记录实际选出的条款或无依据结果；没有密钥时只测真实检索，有候选的行标记“未调用百炼”。报告包含词法（LEXICAL）、RRF 融合（HYBRID）、融合后精排（RERANK）三种策略。两路各取最多 5 条，按片段 ID 去重，RRF 的 k=60；精排最多 10 条，最终展示上限统一为 5。混合配置默认 HYBRID，四题实测中精排改善一个口语样本，同时令另一题退位，完整排名与耗时见 [V1.0b 验收](plantodo.md#v10b-四题实测)。要在导购网页切换策略，设置 `BABYCARE_RETRIEVAL_MODE` 为上述名称之一并重启 Java。普通 `rag` 配置继续提供 V1.0a 词法服务。模型工件固定版本见 [本地推理服务](models/service.py)。

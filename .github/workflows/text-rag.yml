@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       db:
-        image: postgres:16
+        image: pgvector/pgvector:0.8.1-pg16
         env:
           POSTGRES_DB: babycare
           POSTGRES_USER: babycare
@@ -37,4 +37,6 @@ jobs:
       - run: echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
       - name: Verify original standalone demo database
         run: bash mvnw -B -Dspring.profiles.active=default "-Dtest=GuideAcceptanceTests#policyLifecycleAndBaseline" test
+      - name: Verify hybrid permissions, publication rollback and old data backfill
+        run: BABYCARE_VECTOR_TEST=1 SPRING_PROFILES_ACTIVE=rag,hybrid bash mvnw -B -Dtest=HybridPolicyTests test
       - run: NODE_PATH="$RUNNER_TEMP/browser/node_modules" bash mvnw -B verify

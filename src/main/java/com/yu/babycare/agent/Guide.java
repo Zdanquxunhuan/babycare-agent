@@ -7,6 +7,7 @@ import com.yu.babycare.catalog.Catalog.Filter;
 import com.yu.babycare.knowledge.Knowledge;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -37,6 +38,8 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class Guide {
+    private static final Pattern COMBINED_AMOUNT = Pattern.compile("共\\s*[0-9]+(?:\\.[0-9]+)?\\s*(?:元|块)");
+
     /**
      * 一轮回答 / One answer returned to the caller.
      *
@@ -279,7 +282,7 @@ public class Guide {
         // 关键词启发式：模型给出的 scope 只在金额本身缺失时兜底。/ Keyword heuristics first; the plan's scope only fills gaps when no amount is given.
         boolean perPack = List.of("每包","单包","每一包","一包最多","单价").stream().anyMatch(question::contains);
         boolean combined = List.of("总预算","合计","总共","一共","总价","总额","总计","加起来","一起不超过","总花费","总支出")
-            .stream().anyMatch(question::contains);
+            .stream().anyMatch(question::contains) || COMBINED_AMOUNT.matcher(question).find();
         LanguageModel.Scope scope = perPack ? LanguageModel.Scope.UNIT : null;
         if (combined && !perPack) scope = LanguageModel.Scope.TOTAL;
         // The first release treats an unspecified cap as a unit price. Only explicit wording

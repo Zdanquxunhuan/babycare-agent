@@ -7,7 +7,7 @@ import java.util.Set;
 import java.math.BigDecimal;
 
 public interface LanguageModel {
-    enum Intent { PRODUCT, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
+    enum Intent { PRODUCT, PRODUCT_POLICY, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
     enum Scope { UNIT, TOTAL }
     enum Check { PRICE, STOCK, PROMOTION }
     enum ReferenceKind { POSITION, CURRENT, NEW_LIST }
@@ -15,7 +15,14 @@ public interface LanguageModel {
     record Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                 Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
                 Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,
-                Boolean promotions, Reference reference) {
+                Boolean promotions, Reference reference, String policyQuestion) {
+        public Plan(Intent intent, String store, String category, String size, BigDecimal budget,
+                    Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
+                    Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,
+                    Boolean promotions, Reference reference) {
+            this(intent,store,category,size,budget,inStock,brands,exclude,allow,clear,missingField,
+                quantity,totalBudget,scope,promotions,reference,null);
+        }
         public Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                     Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
                     Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,

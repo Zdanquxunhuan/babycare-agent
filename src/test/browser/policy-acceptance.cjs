@@ -39,6 +39,30 @@ const { randomUUID } = require('node:crypto');
       await row.getByRole('button',{name:'下线'}).waitFor();
     }
     const first = await upload(1);
+    if (process.argv.includes('--quote-policy')) {
+      const second = await upload(2);
+      await publish(second);
+      try {
+        await guide.locator('#fresh').click();
+        await guide.waitForFunction(() => !document.querySelector('#fresh').disabled);
+        await ask('本店有哪些 L 码纸尿裤？只看芽禾和绒朵。');
+        const reply = await ask('第二款买两包，今天有活动吗？如果拆了一包还能退吗？');
+        assert.equal(await reply.locator('table tr').count(),2);
+        assert.match(await reply.locator('table').innerText(),/绒朵[\s\S]*3 包[\s\S]*合计 218 元/);
+        assert.match(await reply.innerText(),/售后政策：.*批次与照片/);
+        assert.match(await reply.locator('a').innerText(),/第4条 已拆包.*v2/);
+      } finally {
+        await second.getByRole('button',{name:'下线'}).click();
+        await ops.getByText('资料已下线',{exact:true}).waitFor();
+      }
+      await guide.reload();
+      const historical = guide.locator('#history article').last();
+      await historical.getByText(/当前缺少有效条款/).waitFor();
+      assert.match(await historical.locator('table').innerText(),/合计 218 元/);
+      assert.equal(await historical.locator('a').count(),0);
+      assert.doesNotMatch(await historical.innerText(),/批次与照片/);
+      return;
+    }
     if (process.argv.includes('--invoice-only')) {
       await publish(first);
       try {

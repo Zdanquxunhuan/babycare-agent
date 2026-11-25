@@ -86,6 +86,8 @@ public class Conversations {
     private View view(Checkpoints.Snapshot chat, StoreSecurity.Store store) {
         var visible = chat.turns().stream().map(turn -> {
             if (turn.reply().citations().stream().allMatch(c -> knowledge.visible(store.id(),c))) return turn;
+            if (turn.reply().policyText()!=null)
+                return new Turn(turn.messageId(),turn.question(),turn.reply().withPolicy(java.util.Optional.empty()));
             return new Turn(turn.messageId(),turn.question(),
                 new Guide.Reply("no_evidence","原引用资料已失效，请重新提问。",List.of(),List.of(),null,Map.of(),List.of()));
         }).toList();

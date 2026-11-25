@@ -65,6 +65,7 @@ function render(view) {
       const steps = add(details,"ol");
       turn.reply.trace.forEach(step => add(steps,"li",step));
     }
+    if (turn.reply.policyText) add(box,"p","售后政策：" + turn.reply.policyText);
     for (const cite of turn.reply.citations) {
       const source = add(box,"a",cite.title + " · " + (cite.section || "摘要") + " v" + cite.version + " · 查看原文");
       source.href = cite.source;

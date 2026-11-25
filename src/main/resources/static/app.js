@@ -1,5 +1,6 @@
 const el = id => document.getElementById(id);
 let session, chat, pending;
+let stockModes = [];
 const notice = text => { el("notice").textContent = text; };
 
 async function api(path, method = "GET", body) {
@@ -89,7 +90,15 @@ async function init() {
   el("access").hidden = session.authenticated;
   const ops = session.role === "OPS";
   el("ops").hidden = !ops;
-  if (!ops) { el("versions").replaceChildren(); el("upload").reset(); }
+  if (!ops) {
+    el("versions").replaceChildren();
+    el("upload").reset();
+    stockModes = [];
+    el("stock-store").replaceChildren();
+    el("stock-mode").reset();
+    el("stock-status").textContent = "";
+    el("stock-history").removeAttribute("href");
+  }
   el("desk").hidden = !session.authenticated || ops;
   el("location").textContent = session.store?.name || "门店导购工作台";
   if (!session.authenticated) {
@@ -97,7 +106,7 @@ async function init() {
     chat = pending = null;
     return;
   }
-  if (ops) { await loadPolicies(); return; }
+  if (ops) { await Promise.all([loadPolicies(), loadStockModes()]); return; }
   render(await api("/api/conversations/current","POST"));
   pending = null;
 }
@@ -145,6 +154,46 @@ el("compose").onsubmit = event => {
     pending = null;
     el("question").value = "";
     notice("");
+  });
+};
+function selectedMode() {
+  return stockModes.find(item => item.store.id === el("stock-store").value);
+}
+function renderStockMode() {
+  const entry = selectedMode();
+  if (!entry) return;
+  el("stock-status").textContent = entry.current.paused ? "已暂停，请由店员核实库存" : "自动核验中";
+  el("stock-action").textContent = entry.current.paused ? "恢复库存推荐" : "暂停库存推荐";
+  el("stock-history").href = "/api/ops/stock-mode/" + encodeURIComponent(entry.store.id) + "/history";
+}
+async function loadStockModes() {
+  const select = el("stock-store");
+  const previous = select.value;
+  stockModes = await api("/api/ops/stock-mode");
+  select.replaceChildren(...stockModes.map(item => new Option(item.store.name,item.store.id)));
+  if (stockModes.some(item => item.store.id === previous)) select.value = previous;
+  renderStockMode();
+}
+el("stock-store").onchange = () => {
+  el("stock-reason").value = "";
+  renderStockMode();
+};
+el("stock-mode").onsubmit = event => {
+  event.preventDefault();
+  run(async () => {
+    const entry = selectedMode();
+    if (!entry) throw new Error("请刷新运营页面后再操作");
+    const reason = el("stock-reason").value.trim();
+    const change = {expectedRevision:entry.current.revision, paused:!entry.current.paused, reason};
+    try {
+      await api("/api/ops/stock-mode/" + encodeURIComponent(entry.store.id),"POST",change);
+    } catch (err) {
+      if (err.status === 409) await loadStockModes();
+      throw err;
+    }
+    el("stock-reason").value = "";
+    await loadStockModes();
+    notice(entry.store.name + (change.paused ? "已切换为人工核实" : "已恢复自动库存核验"));
   });
 };
 async function loadPolicies() {

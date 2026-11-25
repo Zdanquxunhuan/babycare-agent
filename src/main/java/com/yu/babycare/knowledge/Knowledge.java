@@ -40,10 +40,20 @@ public class Knowledge {
     }
 
     List<Evidence> search(String store,String query,Mode selected) {
+        return search(store,query,selected,true);
+    }
+
+    public List<Evidence> searchPolicies(String store,String query) {
+        return search(store,query,mode,false);
+    }
+
+    private List<Evidence> search(String store,String query,Mode selected,boolean includeSample) {
         Set<String> terms = PolicyText.terms(query);
+        // “拆了一包”与“已拆包”没有连续的汉字二元词；只扩展召回，选证据仍使用完整原问。
+        if (query.matches("(?s).*拆(?:开)?了(?:一|1)包.*")) terms.add("拆包");
         var hits = new ArrayList<>(policies.search(store,terms));
         int overlap = (int) terms.stream().filter(sampleTerms::contains).count();
-        if (overlap>0) publicSample.ifPresent(e -> hits.add(new Policies.Hit(e,overlap)));
+        if (includeSample && overlap>0) publicSample.ifPresent(e -> hits.add(new Policies.Hit(e,overlap)));
         var lexical = hits.stream().sorted(Comparator.comparingInt(Policies.Hit::score).reversed()).limit(5).map(Policies.Hit::evidence).toList();
         var result = selected == Mode.LEXICAL ? lexical :
             hybrid.orElseThrow().search(store,query,lexical,selected == Mode.RERANK,e -> visible(store,e));

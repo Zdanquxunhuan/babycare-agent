@@ -378,6 +378,79 @@ class GuideAcceptanceTests {
         runBrowser("displayed-products.cjs");
     }
 
+    private void stubQuoteAndPolicy() {
+        var compound = new Plan(Intent.PRODUCT_POLICY,null,null,null,null,null,null,null,null,null,null,
+            2,null,null,true,new Reference(ReferenceKind.POSITION,2),"如果拆了一包还能退吗？");
+        when(model.interpret(anyString(),eq("STORE-01"),any(),anySet())).thenReturn(listTwoBrands(),compound);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PROMOTION);
+        when(model.selectEvidence(anyString(),anyList())).thenAnswer(call -> {
+            List<Evidence> candidates = call.getArgument(1);
+            return candidates.stream().filter(e -> e.section().contains("已拆包")).findFirst().orElseThrow().id();
+        });
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST",matches="1")
+    void quoteAndPolicyInBrowser() throws Exception {
+        stubQuoteAndPolicy();
+        runBrowser("policy-acceptance.cjs","--quote-policy");
+    }
+
+    @Test void quoteAndPolicyAreVerifiedIndependently() throws Exception {
+        String ops = "/api/ops/policies";
+        String key = "quote-returns-"+UUID.randomUUID();
+        String revision = ops+"/"+key+"/1";
+        authenticate("ops","ops-test");
+        var draft = Map.of("key",key,"title","模拟售后政策","scope","STORE-01",
+            "markdown",Files.readString(Path.of("fixtures/policies/returns-v2.md")));
+        ok(request("POST",ops,"application/json",json.writeValueAsString(draft)));
+        assertEquals(204,request("POST",revision+"/publish",null,null).statusCode());
+        login("direct");
+        String clause = "如果拆了一包还能退吗？";
+        String question = "第二款买两包，今天有活动吗？"+clause;
+        stubQuoteAndPolicy();
+        try {
+            assertEquals(2,ask("本店有哪些 L 码纸尿裤？只看芽禾和绒朵。").path("products").size());
+            var reply = ask(question);
+            assertEquals(1,reply.path("products").size());
+            assertEquals("DEMO-008",reply.path("products").path(0).path("sku").asString());
+            assertEquals(3,reply.path("products").path(0).path("packs").asInt());
+            assertEquals(218,reply.path("quotes").path("DEMO-008").path("payable").asInt());
+            assertEquals(1,reply.path("citations").size());
+            String link = reply.path("citations").path(0).path("source").asString();
+            assertTrue(reply.path("policyText").asString().contains("照片"));
+            assertEquals(reply.path("policyText").asString(),request("GET",link,null,null).body());
+
+            Path offline = Files.createFile(dir.resolve("offline"));
+            try {
+                var partial = ask(question);
+                assertEquals("stock_unavailable",partial.path("type").asString());
+                assertEquals(0,partial.path("products").size());
+                assertEquals(reply.path("citations"),partial.path("citations"));
+            } finally { Files.delete(offline); }
+
+            doThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)).when(model).selectEvidence(anyString(),anyList());
+            var degraded = ask(question);
+            assertEquals(reply.path("quotes"),degraded.path("quotes"));
+            assertEquals(0,degraded.path("citations").size());
+            assertTrue(degraded.path("policyText").asString().contains("人工确认"));
+        } finally {
+            authenticate("ops","ops-test");
+            assertEquals(204,request("POST",revision+"/withdraw",null,null).statusCode());
+        }
+        authenticate("direct","guide-test");
+        var history = ok(request("GET","/api/conversations/"+chat,null,null)).path("turns").path(1).path("reply");
+        assertFalse(history.toString().contains("照片"));
+        assertTrue(history.path("policyText").asString().contains("人工确认"));
+        assertEquals(0,history.path("citations").size());
+        assertEquals(218,history.path("totals").path("DEMO-008").asInt());
+        var fresh = ask(question);
+        assertEquals(218,fresh.path("totals").path("DEMO-008").asInt());
+        assertEquals(0,fresh.path("citations").size());
+        assertTrue(fresh.path("policyText").asString().contains("人工确认"));
+    }
+
     @Test void referencesClarifyWithoutLookingUpAnotherProduct() throws Exception {
         login("direct");
         var ordinary = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null);

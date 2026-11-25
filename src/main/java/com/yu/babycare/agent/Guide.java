@@ -64,7 +64,16 @@ public class Guide {
      */
     public record Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
                         Integer quantity, Map<String,BigDecimal> totals, List<String> trace,
-                        Map<String,PurchasePlanner.Quote> quotes) {
+                        Map<String,PurchasePlanner.Quote> quotes, String policyText) {
+        public Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
+                     Integer quantity, Map<String,BigDecimal> totals, List<String> trace,
+                     Map<String,PurchasePlanner.Quote> quotes) {
+            this(type,text,products,citations,quantity,totals,trace,quotes,null);
+        }
+        public Reply withPolicy(Optional<Knowledge.Evidence> evidence) {
+            return new Reply(type,text,products,evidence.stream().toList(),quantity,totals,trace,quotes,
+                evidence.map(Knowledge.Evidence::excerpt).orElse("当前缺少有效条款，需人工确认。"));
+        }
         public Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
                      Integer quantity, Map<String,BigDecimal> totals, List<String> trace) {
             this(type,text,products,citations,quantity,totals,trace,Map.of());
@@ -150,16 +159,35 @@ public class Guide {
         if (plan.store() != null && !store.id().equals(plan.store()))
             return denied(previous);
         if (plan.intent() == LanguageModel.Intent.KNOWLEDGE) {
-            var evidence = knowledge.search(store.id(),question);
-            if (!evidence.isEmpty()) {
-                String id = model.selectEvidence(question, evidence);
-                // 检索 → 模型选定 → 复核可见，三个条件同时成立才引用该条资料。/ Retrieve, model selection, and visibility re-check must all hold before citing.
-                for (var hit : evidence) if (hit.id().equals(id) && knowledge.visible(store.id(),hit))
-                    return new Result(previous,new Reply("knowledge",hit.excerpt(),List.of(),List.of(hit)));
-            }
-            // 检索为空、模型选了不存在的 id、或资料已不可见，统一降级为“资料不足”。/ Empty hits, unknown id or invisible evidence all degrade to the same reply.
-            return new Result(previous,Reply.message("no_evidence","现有审核资料不足以回答这个问题。"));
+            var hit = selectVisible(store,question,knowledge.search(store.id(),question));
+            return new Result(previous,hit.map(e -> new Reply("knowledge",e.excerpt(),List.of(),List.of(e)))
+                .orElseGet(() -> Reply.message("no_evidence","现有审核资料不足以回答这个问题。")));
         }
+        var product = answerProduct(question,store,context,mentioned,plan);
+        if (plan.intent() != LanguageModel.Intent.PRODUCT_POLICY) return product;
+
+        String clause = plan.policyQuestion();
+        String query = clause != null && !clause.isBlank() && question.contains(clause) ? clause : question;
+        Optional<Knowledge.Evidence> policy;
+        try {
+            // Preserve the original context (including negation) when deciding whether a clause applies.
+            policy = selectVisible(store,"只核对下列原问中的售后问题：" + question,knowledge.searchPolicies(store.id(),query));
+        } catch (ResponseStatusException ex) {
+            if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE && ex.getStatusCode()!=HttpStatus.GATEWAY_TIMEOUT) throw ex;
+            policy = Optional.empty();
+        }
+        return new Result(product.filter(),product.reply().withPolicy(policy));
+    }
+
+    private Optional<Knowledge.Evidence> selectVisible(Store store,String question,List<Knowledge.Evidence> hits) {
+        if (hits.isEmpty()) return Optional.empty();
+        String id = model.selectEvidence(question,hits);
+        return hits.stream().filter(hit -> hit.id().equals(id) && knowledge.visible(store.id(),hit)).findFirst();
+    }
+
+    private Result answerProduct(String question,Store store,LanguageModel.Context context,
+                                 Set<String> mentioned,LanguageModel.Plan plan) {
+        Filter previous = context.conditions();
         // 意图不清或混购需求先追问目标商品，不进行任何检索。/ Ask for the target product when the intent is unclear or the basket mixes SKUs.
         if (plan.intent() == LanguageModel.Intent.OTHER)
             return new Result(previous,Reply.message("clarify","你想了解哪款商品，或查询哪方面的护理资料？"));

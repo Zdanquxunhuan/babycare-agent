@@ -118,7 +118,7 @@ public class Conversations {
         var claim = checkpoints.claim(owner,id,input);
         if (claim.token()!=null) {
             long start = System.nanoTime();
-            try {
+            try (var correlation = org.slf4j.MDC.putCloseable("messageId", input.messageId().toString())) {
                 var result = guide.answer(input.text(),owner.store(),claim.context());
                 checkpoints.finish(checkpoints.owner(auth),id,input,claim.token(),result);
                 log.info("turn={} chat={} guide={} store={} result={} durationMs={} evidence={}",

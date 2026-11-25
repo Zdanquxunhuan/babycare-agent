@@ -204,6 +204,8 @@ public class Guide {
             return new Result(filter,new Reply("products",describeMissing(message,missing),rows,List.of()));
         } catch (ResponseStatusException ex) {
             // 库存数据源故障降级为可重试提示；其它异常继续上抛，避免掩盖真实问题。/ A stock-source fault degrades to a retryable reply; other errors propagate.
+            if (ex.getStatusCode()==HttpStatus.GATEWAY_TIMEOUT)
+                return new Result(filter,Reply.message("stock_unavailable","库存暂无法确认，请稍后再查或请店员核实。"));
             if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE) throw ex;
             return new Result(filter,Reply.message("stock_unavailable","库存暂无法确认，请稍后重新查询。"));
         }

@@ -35,7 +35,7 @@ class PurchasePlannerTests {
         var offer = new Catalog.Offer("DEMO-008","绒朵 L 码","绒朵","纸尿裤","L",52,
             BigDecimal.valueOf(119),3,"模拟",java.time.Instant.EPOCH);
         when(catalog.search(store,requested)).thenReturn(skus);
-        when(catalog.check(eq(store),eq(skus),anyBoolean())).thenReturn(List.of(offer));
+        when(catalog.check(eq(store),eq(skus),anyBoolean(),anyLong())).thenReturn(List.of(offer));
         var planner = new PurchasePlanner(catalog,promotions,model,5,Duration.ofSeconds(3));
 
         // Same candidate and stock, two controlled tool orders through the same executor.
@@ -44,14 +44,27 @@ class PurchasePlannerTests {
         var promoFirst = planner.run(store,requested);
         assertEquals("empty",promoFirst.type());
         verify(promotions).lookup(store,skus,4);
-        verify(catalog).check(store,skus,false);
-        verify(catalog).check(store,skus,true);
+        verify(catalog).check(eq(store),eq(skus),eq(false),anyLong());
+        verify(catalog).check(eq(store),eq(skus),eq(true),anyLong());
         clearInvocations(catalog,promotions);
         var stockFirst = planner.run(store,requested);
         assertEquals(promoFirst.text(),stockFirst.text());
         verify(catalog).search(store,requested);
-        verify(catalog).check(store,skus,true);
+        verify(catalog).check(eq(store),eq(skus),eq(true),anyLong());
         verifyNoMoreInteractions(catalog,promotions);
+    }
+
+    @Test void priceAfterStockKeepsVerifiedQuantity() {
+        var skus = List.of("DEMO-008");
+        var price = BigDecimal.valueOf(100);
+        var stale = new Catalog.Offer("DEMO-008","绒朵","绒朵","纸尿裤","L",52,price,3,"模拟",java.time.Instant.EPOCH);
+        var current = new Catalog.Offer("DEMO-008","绒朵","绒朵","纸尿裤","L",52,price,5,"模拟",java.time.Instant.now());
+        when(catalog.search(store,filter)).thenReturn(skus);
+        when(model.firstCheck(eq(filter),eq(1),anyLong())).thenReturn(LanguageModel.Check.STOCK);
+        when(catalog.check(eq(store),eq(skus),eq(true),anyLong())).thenReturn(List.of(current));
+        when(catalog.check(eq(store),eq(skus),eq(false),anyLong())).thenReturn(List.of(stale));
+        var planner = new PurchasePlanner(catalog,promotions,model,5,Duration.ofSeconds(3));
+        assertEquals(5,planner.run(store,filter).products().getFirst().packs());
     }
 
     @Test void modelCannotCallPromotionForAnOrdinaryPurchase() {

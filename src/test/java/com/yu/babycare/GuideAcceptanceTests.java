@@ -38,7 +38,15 @@ class GuideAcceptanceTests {
     @TempDir static Path dir;
     @DynamicPropertySource static void properties(DynamicPropertyRegistry r) {
         r.add("babycare.promotion-fault-file", () -> dir.resolve("promotions-offline").toString());
+        r.add("babycare.stock-source", () -> dir.resolve("stock.json").toString());
+        r.add("babycare.stock-delay-file", () -> dir.resolve("stock-slow").toString());
+        r.add("babycare.stock-timeout", () -> "500ms");
+        r.add("babycare.stock-simulated-delay", () -> "20s");
         r.add("babycare.stock-fault-file", () -> dir.resolve("offline").toString());
+    }
+    @org.springframework.beans.factory.annotation.Value("${babycare.fixtures:fixtures}") Path fixtures;
+    @BeforeEach void copyInventory() throws Exception {
+        Files.copy(fixtures.resolve("catalog-demo.json"),dir.resolve("stock.json"), StandardCopyOption.REPLACE_EXISTING);
     }
     @LocalServerPort int port;
     @Autowired ObjectMapper json;
@@ -264,6 +272,8 @@ class GuideAcceptanceTests {
         runner.environment().put("BABYCARE_OPS_PASSWORD","ops-test");
         runner.environment().put("BABYCARE_PROMOTION_FAULT_FILE",dir.resolve("promotions-offline").toString());
         runner.environment().put("BABYCARE_STOCK_FAULT_FILE",dir.resolve("offline").toString());
+        runner.environment().put("BABYCARE_STOCK_DELAY_FILE",dir.resolve("stock-slow").toString());
+        runner.environment().put("BABYCARE_STOCK_SOURCE",dir.resolve("stock.json").toString());
         var process = runner.start();
         try {
             assertTrue(process.waitFor(90,java.util.concurrent.TimeUnit.SECONDS),"浏览器用例超时");
@@ -280,6 +290,31 @@ class GuideAcceptanceTests {
         when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(initial,activity,activity);
         when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE,Check.PROMOTION,Check.STOCK);
         runBrowser("promotion-acceptance.cjs");
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST",matches="1")
+    void stockTimeoutAlertAndRecoveryInBrowser() throws Exception {
+        var initial = new Plan(Intent.PRODUCT,null,"纸尿裤","L",null,true,Set.of("绒朵"),null,null,null,null,
+            2,new BigDecimal("218"),Scope.TOTAL,true);
+        var followUp = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null);
+        when(model.interpret(anyString(),eq("STORE-01"),any(),anySet())).thenReturn(initial,followUp);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        runBrowser("stock-timeout.cjs");
+    }
+
+    @Test void directOfferDistinguishesTimeoutFromOffline() throws Exception {
+        login("direct");
+        String path = "/api/stores/STORE-01/offers/DEMO-008";
+        Path slow = Files.createFile(dir.resolve("stock-slow"));
+        try {
+            assertEquals(504, request("GET",path,null,null).statusCode());
+            assertEquals(403, request("GET","/api/stores/STORE-02/offers/DEMO-008",null,null).statusCode());
+        } finally { Files.delete(slow); }
+        Path offline = Files.createFile(dir.resolve("offline"));
+        try { assertEquals(503, request("GET",path,null,null).statusCode()); }
+        finally { Files.delete(offline); }
+        assertEquals(3,ok(request("GET",path,null,null)).path("packs").asInt());
     }
 
     @Test void promotionBudgetAndStoreBoundaries() throws Exception {

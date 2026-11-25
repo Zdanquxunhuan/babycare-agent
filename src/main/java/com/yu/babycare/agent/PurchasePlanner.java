@@ -84,8 +84,12 @@ public class PurchasePlanner {
 
             List<Offer> checked;
             try {
-                checked = catalog.check(store, candidates, next==Check.STOCK);
+                checked = catalog.check(store, candidates, next==Check.STOCK, remainingMillis(deadline));
             } catch (ResponseStatusException ex) {
+                if (ex.getStatusCode()==HttpStatus.GATEWAY_TIMEOUT) {
+                    trace.add("库存查询超时");
+                    return stop("stock_unavailable","库存暂无法确认，请稍后再查或请店员核实。",trace);
+                }
                 if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE) throw ex;
                 trace.add("库存查询失败");
                 return stop("stock_unavailable","库存暂无法确认，请稍后重新查询。",trace);
@@ -114,6 +118,9 @@ public class PurchasePlanner {
             candidates = rows.stream().map(Offer::sku).toList();
         }
         if (checkActivity) return promotionReply(filter,inStock,verifiedPrices,rule,activityUnavailable,trace);
+        // A later price check must not replace a freshly verified quantity with the startup snapshot.
+        var eligibleSkus = Set.copyOf(candidates);
+        rows = inStock.stream().filter(row -> eligibleSkus.contains(row.sku())).toList();
         Map<String,BigDecimal> totals = new LinkedHashMap<>();
         for (Offer row : rows) totals.put(row.sku(), total(row,filter.quantity()));
         trace.add("完成 · 已核实购买数量及合计");

@@ -130,3 +130,32 @@ try {
 3. Java 服务运行期间，从项目根目录另开 PowerShell，运行 `New-Item target/promotion-offline.flag -ItemType File`，再问“再查一下活动”。页面提示“优惠待确认”，仍显示芽禾普通价 212 元；绒朵普通价合计 238 元，单独列为超预算。运行 `Remove-Item target/promotion-offline.flag` 恢复模拟活动服务。
 
 [活动样本](fixtures/promotion-demo.json)仅适用于 STORE-01 的 DEMO-008，按北京时间核验起止日期（含首尾），同笔购买只减一次。每包限价按优惠后总额与“每包上限 × 数量”比较。每次查询读取当前活动样本，资料缺失或暂不可读时会提示优惠待确认。报价用于模拟导购查询，活动数据和库存均来自本地样本。
+
+## V1.4 库存超时演练
+
+在项目根目录用 JDK 21 打包后，打开 PowerShell。复制一份模拟库存，在当前窗口配置好运营密码、库存源与延迟开关后启动。这里的库存源只影响库存数量，报价和活动沿用现有样本。
+
+```powershell
+Copy-Item fixtures/catalog-demo.json target/drill-stock.json
+$env:BABYCARE_STOCK_SOURCE = (Resolve-Path target/drill-stock.json).Path
+$env:BABYCARE_STOCK_DELAY_FILE = "$PWD/target/stock-slow.flag"
+$env:BABYCARE_OPS_PASSWORD = Read-Host '设置本次模拟运营登录密码'
+.\start-demo.ps1
+```
+
+1. 用 `direct` 登录，新建对话，问“本店绒朵 L 码两包，总预算 218 元，有库存和活动吗？”。在模拟活动有效期内可看到库存 3 包、两包 218 元。
+2. 从另一个 PowerShell 窗口在项目根目录执行 `New-Item target/stock-slow.flag -ItemType File`。在原对话问“帮我再核一下库存”。模拟源延迟默认 10 秒，库存工具默认最多等待 2 秒；页面显示“库存暂无法确认”和查询编号。这里计时的是库存调用，模型理解问题和选择工具另计。
+3. 在浏览器的隐私窗口用 `ops` 登录，点击“库存超时告警”，按页面查询编号查找相同的 `messageId`。记录包含 `stock.lookup`、门店、实际耗时和本次超时阈值。服务端同一编号出现在 WARN 的 `messageId` 和回合日志的 `turn`。运营接口保留本实例最近 50 条超时，重启后清空。
+4. 在第二个 PowerShell 窗口执行以下命令，将副本中直营店的绒朵从 3 包改为 1 包，再移除延迟标记。回原对话问“再查一下”，应得到“需要同款 2 包，候选商品最多仅有 1 包库存”。
+
+```powershell
+$stockPath = 'target/drill-stock.json'
+$stockData = Get-Content $stockPath -Encoding UTF8 -Raw | ConvertFrom-Json
+$item = $stockData.products | Where-Object sku -eq 'DEMO-008'
+$offer = $item.store_offers | Where-Object store_id -eq 'STORE-01'
+$offer.available_packs = 1
+$stockData | ConvertTo-Json -Depth 10 | Set-Content $stockPath -Encoding UTF8
+Remove-Item target/stock-slow.flag
+```
+
+可通过 `BABYCARE_STOCK_TIMEOUT` 和 `BABYCARE_STOCK_SIMULATED_DELAY` 配置持续时间。未配置延迟标记文件时正常读取库存。多包规划取本轮剩余时间和库存超时阈值中的较小值。普通离线标记仍用于立即失败测试。需要重演时，将原始样本重新复制到库存副本。

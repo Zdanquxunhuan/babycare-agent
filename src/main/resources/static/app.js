@@ -33,6 +33,7 @@ function render(view) {
     const box = add(history,"article");
     add(box,"strong",turn.question);
     add(box,"p",turn.reply.text);
+    if (turn.reply.type === "stock_unavailable") add(box,"small","查询编号 " + turn.messageId);
     const rows = turn.reply.products;
     if (rows.length) {
       const table = add(box,"table");

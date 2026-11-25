@@ -37,7 +37,7 @@ public class BailianModel implements LanguageModel {
             RECOMMEND_SIZE（要求选合适尺码）、COMPARE、MIXED_BASKET（明确要求不同款组合购买）、
             KNOWLEDGE、RISK（急症）或 OTHER。
             仅提取本轮变更；其余字段省略。store 仅在明确要求某个门店时填 STORE-01（直营）
-            或 STORE-02（加盟）；跨店不改成本店。category 是纸尿裤或拉拉裤，size 是 S/M/L/XL/XXL，
+            或 STORE-02（加盟）；明确要查其他门店但无法定位时填 OTHER_STORE。跨店不改成本店。category 是纸尿裤或拉拉裤，size 是 S/M/L/XL/XXL，
             quantity 为明确要购买的同款包数（不是库存数量或每包片数）。totalBudget 是明确的合计上限，
             budget 是每包上限或未说明口径的金额。明确每包时 scope=UNIT，明确合计时 scope=TOTAL，
             未说明时省略 scope，由后端根据上下文决定是否追问。不要自行推算单价。

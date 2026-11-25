@@ -1,5 +1,6 @@
 package com.yu.babycare.agent;
 
+import com.yu.babycare.auth.StoreSecurity;
 import com.yu.babycare.auth.StoreSecurity.Store;
 import com.yu.babycare.catalog.Catalog;
 import com.yu.babycare.catalog.Catalog.Filter;
@@ -131,6 +132,7 @@ public class Guide {
         // 危急症状走本地硬编码快路：不等模型、不改变已有条件，先保证安全。 / Red-flag symptoms short-circuit locally: no model wait, filter untouched.
         if (List.of("呼吸困难","抽搐","意识不清","严重脱水","喘不过气").stream().anyMatch(question::contains))
             return risk(previous);
+        if (StoreSecurity.mentionsOtherStore(store, question)) return denied(previous);
         // 从目录词表里找出问题提到的品牌，稍后用于“要查还是排除”的消歧。 / Collect brand names from the catalog vocabulary; used later to disambiguate include vs exclude.
         var mentioned = catalog.mentionedBrands(store,question);
         var plan = model.interpret(question, store.id(), context, mentioned);
@@ -139,7 +141,7 @@ public class Guide {
         if (plan.intent() == LanguageModel.Intent.RISK) return risk(previous);
         // 防止跨店查询：模型解析出的门店必须与登录账号所属门店一致。/ Block cross-store access: the planned store must match the authenticated store.
         if (plan.store() != null && !store.id().equals(plan.store()))
-            return new Result(previous, Reply.message("access_denied","该门店超出当前账号的查询权限。"));
+            return denied(previous);
         if (plan.intent() == LanguageModel.Intent.KNOWLEDGE) {
             var evidence = knowledge.search(store.id(),question);
             if (!evidence.isEmpty()) {
@@ -202,6 +204,10 @@ public class Guide {
             if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE) throw ex;
             return new Result(filter,Reply.message("stock_unavailable","库存暂无法确认，请稍后重新查询。"));
         }
+    }
+
+    private static Result denied(Filter previous) {
+        return new Result(previous, Reply.message("access_denied","该门店超出当前账号的查询权限。可以继续查询本店。"));
     }
 
     /**

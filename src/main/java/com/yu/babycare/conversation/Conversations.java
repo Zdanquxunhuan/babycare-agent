@@ -120,7 +120,7 @@ public class Conversations {
             long start = System.nanoTime();
             try (var correlation = org.slf4j.MDC.putCloseable("messageId", input.messageId().toString())) {
                 var result = guide.answer(input.text(),owner.store(),claim.context());
-                checkpoints.finish(checkpoints.owner(auth),id,input,claim.token(),result);
+                checkpoints.finish(checkpoints.owner(auth),id,input,claim,result);
                 log.info("turn={} chat={} guide={} store={} result={} durationMs={} evidence={}",
                     input.messageId(),id,owner.guide(),owner.store().id(),
                     result.reply().type(),(System.nanoTime()-start)/1_000_000,

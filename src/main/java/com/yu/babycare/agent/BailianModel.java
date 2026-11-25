@@ -43,6 +43,10 @@ public class BailianModel implements LanguageModel {
             未说明时省略 scope，由后端根据上下文决定是否追问。不要自行推算单价。
             例：两包总共220元 -> quantity:2,totalBudget:220；两包预算220元 -> quantity:2,budget:220；
             结合上轮待答问题理解简短续答；若用户明确换了话题，按本轮意图处理。
+            “第二款买两包”提取 intent=PRODUCT、reference={"kind":"POSITION","position":2}、quantity=2。
+            “刚才选的那件呢”用 CURRENT；“换一批”“重新列出商品”用 NEW_LIST；普通查询省略 reference。
+            序号从 1 开始，按用户原话提取；即使超出列表也原样返回。不得猜 SKU，不把序号当包数。
+            重新列商品时根据本轮要求用 clear 清理不再适用的预算、包数等筛选条件。
             仅回答“是总价” -> intent:PRODUCT,scope:TOTAL。补充数量或改预算均为 PRODUCT。
             询问本店活动、折扣或优惠后能否满足预算（包括追问“那本店今天有活动吗”）属 PRODUCT，promotions=true。
             明确改看普通价则 promotions=false，其他情况省略。活动金额、适用商品和有效期由工具查询。
@@ -55,6 +59,7 @@ public class BailianModel implements LanguageModel {
             """;
         return call(instruction, Map.of("问题",question,"所属门店",store,"当前条件",context.conditions(),
             "上轮待答问题",Objects.toString(context.pendingQuestion(),""),
+            "上次列表数量",context.displayedSkus().size(),"已有选中款",context.conditions().selectedSku()!=null,
             "提及的品牌",mentionedBrands), Plan.class);
     }
 

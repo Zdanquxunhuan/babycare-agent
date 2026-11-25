@@ -363,6 +363,63 @@ class GuideAcceptanceTests {
         assertEquals(3,ok(request("GET",path,null,null)).path("packs").asInt());
     }
 
+    private Plan listTwoBrands() {
+        return plan(Intent.PRODUCT,"L",null,Set.of("芽禾","绒朵"),null);
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST",matches="1")
+    void displayedProductsInBrowser() throws Exception {
+        var second = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,2,null,null,true,
+            new Reference(ReferenceKind.POSITION,2));
+        var first = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null);
+        when(model.interpret(anyString(),eq("STORE-01"),any(),anySet())).thenReturn(listTwoBrands(),second,first);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        runBrowser("displayed-products.cjs");
+    }
+
+    @Test void referencesClarifyWithoutLookingUpAnotherProduct() throws Exception {
+        login("direct");
+        var ordinary = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null);
+        var ambiguous = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,2,null,null,true,
+            new Reference(ReferenceKind.POSITION,1)); // Model guessed an ordinal for “这款”.
+        var byMeaning = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,null,null,null,null,
+            new Reference(ReferenceKind.POSITION,2));
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(
+            ordinary,listTwoBrands(),ambiguous,ordinary,byMeaning,ordinary,
+            plan(Intent.PRODUCT,"L",null,Set.of("芽禾"),null),ordinary);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        assertEquals("clarify",ask("第二款呢？").path("type").asString());
+        assertEquals(2,ask("本店 L 码纸尿裤，只看芽禾和绒朵").path("products").size());
+        assertEquals("clarify",ask("这款买两包有活动吗？").path("type").asString());
+        assertEquals("clarify",ask("第三款").path("type").asString());
+        verify(model,never()).firstCheck(any(),anyInt(),anyLong());
+        // The ordinal clarification retained the purchase and promotion conditions.
+        assertEquals(218,ask("靠后那个").path("totals").path("DEMO-008").asInt());
+        assertEquals(218,ask("这款再查一下").path("totals").path("DEMO-008").asInt());
+        assertEquals("DEMO-003",ask("换一批，只看芽禾").path("products").path(0).path("sku").asString());
+        assertEquals("clarify",ask("第二款").path("type").asString());
+    }
+
+    @Test void focusedSkuIsRecheckedWhenStockChanges() throws Exception {
+        login("direct");
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(listTwoBrands(),
+            new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,2,null,null,true));
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        assertEquals(3,ask("只看芽禾和绒朵的 L 码纸尿裤").path("products").path(1).path("packs").asInt());
+        Path stock = dir.resolve("stock.json");
+        var snapshot = json.readTree(Files.readString(stock));
+        for (var item : snapshot.path("products")) if ("DEMO-008".equals(item.path("sku").asString())) {
+            for (var row : item.path("store_offers")) if ("STORE-01".equals(row.path("store_id").asString()))
+                ((tools.jackson.databind.node.ObjectNode)row).put("available_packs",1);
+        }
+        Files.writeString(stock,json.writeValueAsString(snapshot));
+        var latest = ask("第二款两包还能买吗？");
+        assertEquals("empty",latest.path("type").asString());
+        assertTrue(latest.path("text").asString().contains("仅有 1 包库存"));
+        assertTrue(latest.path("products").isEmpty());
+    }
+
     @Test void promotionBudgetAndStoreBoundaries() throws Exception {
         var promo = new Plan(Intent.PRODUCT,null,"纸尿裤","L",null,null,Set.of("绒朵"),null,null,null,null,
             2,new BigDecimal("218"),Scope.TOTAL,true);

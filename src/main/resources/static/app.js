@@ -41,9 +41,9 @@ function render(view) {
       const header = add(table,"tr");
       ["商品","单包售价","库存"].forEach(title => add(header,"th",title));
       if (turn.reply.quantity) add(header,"th","购买合计");
-      for (const item of rows) {
+      for (const [index,item] of rows.entries()) {
         const row = add(table,"tr");
-        [item.name,"¥" + item.price,item.packs + " 包"].forEach(value => add(row,"td",value));
+        [rows.length > 1 ? (index + 1) + ". " + item.name : item.name,"¥" + item.price,item.packs + " 包"].forEach(value => add(row,"td",value));
         if (turn.reply.quantity) {
           const quote = turn.reply.quotes?.[item.sku];
           let summary = item.price + " × " + turn.reply.quantity + " = " + (quote?.regularTotal ?? turn.reply.totals[item.sku]) + " 元";

@@ -8,7 +8,7 @@
 <section id="desk" hidden><div class="bar"><h1>导购工作台</h1><nav><button id="fresh" class="quiet">新对话</button><button id="logout" class="quiet">退出</button></nav></div>
 <div id="history" aria-live="polite"></div><form id="compose"><label for="question">咨询内容</label><textarea id="question" required maxlength="2000" placeholder="例如，本店有哪些 200 元以内的纸尿裤？"></textarea><button>发送</button></form></section>
 <section id="ops" hidden>
-<div class="bar"><h1>知识运营</h1><button id="ops-logout" class="quiet">退出</button></div>
+<div class="bar"><h1>知识运营</h1><a href="/api/ops/alerts/stock-timeouts" target="_blank" rel="noopener">库存超时告警</a><button id="ops-logout" class="quiet">退出</button></div>
 <form id="upload">
 <label>政策编号（换版沿用同一编号）<input name="key" pattern="[A-Za-z0-9_-]{1,80}" placeholder="returns" required></label>
 <label>资料标题<input name="title" maxlength="120" required></label>

@@ -14,7 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @RestController
 public class Catalog {
-    record Price(String store_id, BigDecimal price_cny, int available_packs) {}
+    record Price(String store_id, BigDecimal price_cny, Integer available_packs) {}
     record Product(String sku, String name, String brand, String category, String size, int pieces_per_pack,
                    List<Price> store_offers) {}
     record Fixture(boolean simulated, String description, String snapshot_date, List<StoreSecurity.Store> stores,
@@ -34,15 +34,15 @@ public class Catalog {
     }
 
     private final Fixture fixture;
-    private final Path stockFault;
+    private final StockLookup stock;
     public Catalog(ObjectMapper mapper, @Value("${babycare.fixtures:fixtures}") Path dir,
-                   @Value("${babycare.stock-fault-file:}") String faultFile) {
+                   StockLookup stock) {
         fixture = mapper.readValue(dir.resolve("catalog-demo.json").toFile(), Fixture.class);
-        stockFault = faultFile.isBlank() ? null : Path.of(faultFile);
+        this.stock = stock;
         var ids = new HashSet<String>();
         for (Product p : fixture.products()) {
             if (!ids.add(p.sku()) || p.store_offers().stream().anyMatch(o -> o.price_cny().signum()<0
-                    || o.available_packs()<0 || fixture.stores().stream().noneMatch(s -> s.id().equals(o.store_id()))))
+                    || o.available_packs()==null || o.available_packs()<0 || fixture.stores().stream().noneMatch(s -> s.id().equals(o.store_id()))))
                 throw new IllegalStateException("商品样本字段无效 " + p.sku());
         }
     }
@@ -72,20 +72,15 @@ public class Catalog {
         return matches;
     }
 
-    public List<Offer> check(StoreSecurity.Store store, Collection<String> candidates, boolean needsStock) {
-        if (needsStock) requireStock();
-        return scopedRows(store, store.id()).stream().filter(row -> candidates.contains(row.sku())).toList();
-    }
-
-    private void requireStock() {
-        if (stockFault != null && java.nio.file.Files.exists(stockFault))
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "库存暂无法确认");
+    public List<Offer> check(StoreSecurity.Store store, Collection<String> candidates, boolean needsStock, long remainingMs) {
+        var rows = scopedRows(store, store.id()).stream().filter(row -> candidates.contains(row.sku())).toList();
+        return needsStock ? stock.lookup(store.id(), rows, remainingMs) : rows;
     }
 
     public List<Offer> query(StoreSecurity.Store identity, String requestedStore, Filter filter) {
-        var rows = scopedRows(identity, requestedStore);
-        requireStock();
-        return rows.stream().filter(filter::matchesProduct)
+        var candidates = scopedRows(identity, requestedStore).stream().filter(filter::matchesProduct).toList();
+        var rows = stock.lookup(identity.id(), candidates, Long.MAX_VALUE);
+        return rows.stream()
             .filter(row -> filter.budget()==null || row.price().compareTo(filter.budget())<=0)
             .filter(row -> !filter.inStock() || row.packs()>0).toList();
     }

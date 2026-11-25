@@ -16,6 +16,9 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -88,7 +91,7 @@ class GuideAcceptanceTests {
         assertEquals(403,denied.statusCode());
         assertFalse(json.readTree(denied.body()).has("price"));
         when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(new Plan(Intent.PRODUCT,"STORE-02",null,null,null,null,null,null,null,null,null));
-        assertEquals("access_denied",ask("查加盟店价格").path("type").asString());
+        assertEquals("access_denied",ask("另一家分店多少钱").path("type").asString());
         String first=chat;
         assertEquals(204,request("POST","/api/session/logout",null,null).statusCode());
         login("franchise");
@@ -190,7 +193,7 @@ class GuideAcceptanceTests {
         var knowledge = plan(Intent.KNOWLEDGE,null,null,null,null);
         when(model.selectEvidence(anyString(),anyList())).thenReturn("hand-hygiene-1.0");
         when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(
-            new Plan(Intent.PRODUCT,"STORE-02",null,null,null,null,null,null,null,null,null),single,
+            single,
             plan(Intent.PRODUCT,null,200,null,null),plan(Intent.RECOMMEND_SIZE,null,null,null,null),
             plan(Intent.PRODUCT,"L",null,null,null),plan(Intent.PRODUCT,null,120,null,Set.of("芽禾")),
             plan(Intent.PRODUCT,null,100,null,null),plan(Intent.COMPARE,"L",null,Set.of("芽禾","绒朵"),null),
@@ -291,6 +294,39 @@ class GuideAcceptanceTests {
         assertTrue(ask("绒朵两包总价218元以内，有活动吗？").path("products").isEmpty());
     }
 
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void crossStoreFollowUpStopsBeforePlanning(CapturedOutput logs) throws Exception {
+        login("direct");
+        var promo = new Plan(Intent.PRODUCT,null,"纸尿裤","L",null,true,Set.of("绒朵"),null,null,null,null,
+            2,new BigDecimal("218"),Scope.TOTAL,true);
+        when(model.interpret(anyString(),eq("STORE-01"),any(),anySet())).thenReturn(promo);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        var local = ask("本店绒朵 L 码两包有库存吗？算上活动共 218 元够吗？");
+        assertEquals(218,local.path("totals").path("DEMO-008").asInt());
+        assertEquals(3,local.path("products").path(0).path("packs").asInt());
+        clearInvocations(model);
+        var denied = ask("那 B 店呢？");
+        assertEquals("access_denied",denied.path("type").asString());
+        for (String key : List.of("products","citations","quotes","totals","trace"))
+            assertTrue(denied.path(key).isEmpty(),key);
+        verifyNoInteractions(model);
+        var view = ok(request("GET","/api/conversations/"+chat,null,null));
+        String requestId = view.path("turns").path(1).path("messageId").asString();
+        assertTrue(logs.getOut().contains("turn="+requestId+" chat="+chat+" guide=direct store=STORE-01 result=access_denied"));
+    }
+
+    @Test void deniedTurnPreservesPendingQuestion() throws Exception {
+        login("franchise");
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(purchase(2,"220",null,null));
+        assertEquals("clarify",ask("两包预算220元").path("type").asString());
+        String sql = "SELECT context_json FROM bc_chat_checkpoint WHERE chat_id=?";
+        String pending = db.queryForObject(sql,String.class,chat);
+        assertEquals("access_denied",ask("那ＳＴＯＲＥ－０１呢？").path("type").asString());
+        assertEquals(pending,db.queryForObject(sql,String.class,chat));
+        verify(model,times(1)).interpret(anyString(),anyString(),any(),anySet());
+    }
+
     @Test void resumeCheckpointFromBeforePromotions() throws Exception {
         login("direct");
         UUID oldMessage = UUID.randomUUID();
@@ -361,6 +397,9 @@ class GuideAcceptanceTests {
         try {
             accounts.updateUser(User.withUserDetails(original).roles("OPS").build());
             assertEquals(403,request("GET",path,null,null).statusCode());
+            assertEquals(403,request("GET","/api/stores/STORE-01/offers/DEMO-008",null,null).statusCode());
+            assertEquals(403,request("GET","/api/knowledge/citations/sample",null,null).statusCode());
+            assertEquals(403,request("GET","/api/ops/policies",null,null).statusCode());
             assertEquals(403,request("POST","/api/conversations/current",null,null).statusCode());
         } finally {
             accounts.updateUser(original);

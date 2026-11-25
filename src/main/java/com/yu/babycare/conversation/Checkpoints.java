@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,29 +27,21 @@ class Checkpoints {
     private static final long CLAIM_MILLIS = Duration.ofMinutes(3).toMillis();
     private final JdbcTemplate db;
     private final ObjectMapper json;
-    private final UserDetailsService accounts;
+    private final StoreSecurity security;
     private final long ttl;
 
-    Checkpoints(JdbcTemplate db, ObjectMapper json, UserDetailsService accounts,
+    Checkpoints(JdbcTemplate db, ObjectMapper json, StoreSecurity security,
                 @Value("${babycare.checkpoint.ttl:24h}") Duration ttl) {
         this.db = db;
         this.json = json;
-        this.accounts = accounts;
+        this.security = security;
         this.ttl = ttl.toMillis();
         if (this.ttl <= 0) throw new IllegalArgumentException("Checkpoint TTL must be positive");
     }
 
     Owner owner(Authentication auth) {
-        var store = StoreSecurity.store(auth);
-        try {
-            var user = accounts.loadUserByUsername(auth.getName());
-            if (store != null && user.isEnabled() && user.isAccountNonLocked() && user.isAccountNonExpired()
-                    && user.isCredentialsNonExpired() && user.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_GUIDE"))) return new Owner(auth.getName(),store);
-        } catch (UsernameNotFoundException revoked) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        if (!security.hasCurrentRole(auth, "ROLE_GUIDE")) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        return new Owner(auth.getName(), StoreSecurity.store(auth));
     }
 
     @Transactional
@@ -129,9 +120,10 @@ class Checkpoints {
         var context = new Context(result.filter(),reply.type().equals("clarify") ? reply.text() : null);
         long now = System.currentTimeMillis();
         int updated = db.update("""
-            UPDATE bc_chat_checkpoint SET version=version+1,context_json=?,expires_at=?,claim_token=NULL,claim_until=NULL
+            UPDATE bc_chat_checkpoint SET version=version+1,
+                context_json=CASE WHEN ? THEN context_json ELSE ? END,expires_at=?,claim_token=NULL,claim_until=NULL
             WHERE guide_name=? AND store_id=? AND chat_id=? AND version=? AND claim_token=? AND expires_at>?
-            """,json.writeValueAsString(context),now+ttl,owner.guide(),owner.store().id(),id.toString(),
+            """,reply.type().equals("access_denied"),json.writeValueAsString(context),now+ttl,owner.guide(),owner.store().id(),id.toString(),
             input.version(),token.toString(),now);
         if (updated != 1) throw new ResponseStatusException(HttpStatus.CONFLICT,"任务已更新或已过期，请刷新");
         db.update("INSERT INTO bc_chat_turn (chat_id,version,message_id,question,reply_json) VALUES (?,?,?,?,?)",

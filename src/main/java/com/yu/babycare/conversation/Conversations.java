@@ -121,7 +121,8 @@ public class Conversations {
             try {
                 var result = guide.answer(input.text(),owner.store(),claim.context());
                 checkpoints.finish(checkpoints.owner(auth),id,input,claim.token(),result);
-                log.info("turn={} store={} result={} durationMs={} evidence={}",input.messageId(),owner.store().id(),
+                log.info("turn={} chat={} guide={} store={} result={} durationMs={} evidence={}",
+                    input.messageId(),id,owner.guide(),owner.store().id(),
                     result.reply().type(),(System.nanoTime()-start)/1_000_000,
                     result.reply().citations().stream().map(c -> c.id()).toList());
             } catch (RuntimeException ex) {

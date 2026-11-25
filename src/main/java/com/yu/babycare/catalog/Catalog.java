@@ -23,10 +23,25 @@ public class Catalog {
                         BigDecimal price, int packs, String snapshot, Instant queriedAt) {}
     public record Filter(String category, String size, BigDecimal budget, boolean inStock,
                          Set<String> brands, Set<String> excluded, Integer quantity, BigDecimal totalBudget,
-                         BigDecimal pendingBudget, Boolean promotions) {
+                         BigDecimal pendingBudget, Boolean promotions, String selectedSku) {
+        public Filter(String category, String size, BigDecimal budget, boolean inStock, Set<String> brands,
+                      Set<String> excluded, Integer quantity, BigDecimal totalBudget, BigDecimal pendingBudget,
+                      Boolean promotions) {
+            this(category,size,budget,inStock,brands,excluded,quantity,totalBudget,pendingBudget,promotions,null);
+        }
         public static Filter empty() { return new Filter(null, null, null, false, Set.of(), Set.of(),null,null,null,null); }
+        public Filter select(String sku) {
+            return new Filter(category,size,budget,inStock,brands,excluded,quantity,totalBudget,pendingBudget,promotions,sku);
+        }
+
+        public boolean sameProducts(Filter other) {
+            return Objects.equals(category,other.category) && Objects.equals(size,other.size)
+                && brands.equals(other.brands) && excluded.equals(other.excluded);
+        }
+
         boolean matchesProduct(Offer row) {
-            return (category == null || category.equals(row.category()))
+            return (selectedSku == null || selectedSku.equals(row.sku()))
+                && (category == null || category.equals(row.category()))
                 && (size == null || size.equalsIgnoreCase(row.size()))
                 && (brands.isEmpty() || brands.contains(row.brand()))
                 && !excluded.contains(row.brand());

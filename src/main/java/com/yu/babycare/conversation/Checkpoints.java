@@ -115,16 +115,19 @@ class Checkpoints {
     }
 
     @Transactional
-    public void finish(Owner owner, UUID id, Input input, UUID token, Guide.Result result) {
+    public void finish(Owner owner, UUID id, Input input, Claim claim, Guide.Result result) {
         var reply = result.reply();
-        var context = new Context(result.filter(),reply.type().equals("clarify") ? reply.text() : null);
+        var displayed = claim.context().displayedSkus();
+        if (result.filter().selectedSku() == null && (reply.type().equals("products") || reply.type().equals("empty")))
+            displayed = reply.products().stream().map(product -> product.sku()).toList();
+        var context = new Context(result.filter(),reply.type().equals("clarify") ? reply.text() : null,displayed);
         long now = System.currentTimeMillis();
         int updated = db.update("""
             UPDATE bc_chat_checkpoint SET version=version+1,
                 context_json=CASE WHEN ? THEN context_json ELSE ? END,expires_at=?,claim_token=NULL,claim_until=NULL
             WHERE guide_name=? AND store_id=? AND chat_id=? AND version=? AND claim_token=? AND expires_at>?
             """,reply.type().equals("access_denied"),json.writeValueAsString(context),now+ttl,owner.guide(),owner.store().id(),id.toString(),
-            input.version(),token.toString(),now);
+            input.version(),claim.token().toString(),now);
         if (updated != 1) throw new ResponseStatusException(HttpStatus.CONFLICT,"任务已更新或已过期，请刷新");
         db.update("INSERT INTO bc_chat_turn (chat_id,version,message_id,question,reply_json) VALUES (?,?,?,?,?)",
             id.toString(),input.version()+1,input.messageId().toString(),input.text(),json.writeValueAsString(reply));

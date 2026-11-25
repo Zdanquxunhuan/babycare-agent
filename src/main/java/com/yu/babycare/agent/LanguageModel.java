@@ -10,10 +10,19 @@ public interface LanguageModel {
     enum Intent { PRODUCT, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
     enum Scope { UNIT, TOTAL }
     enum Check { PRICE, STOCK, PROMOTION }
+    enum ReferenceKind { POSITION, CURRENT, NEW_LIST }
+    record Reference(ReferenceKind kind, Integer position) {}
     record Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                 Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
                 Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,
-                Boolean promotions) {
+                Boolean promotions, Reference reference) {
+        public Plan(Intent intent, String store, String category, String size, BigDecimal budget,
+                    Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
+                    Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,
+                    Boolean promotions) {
+            this(intent,store,category,size,budget,inStock,brands,exclude,allow,clear,missingField,
+                quantity,totalBudget,scope,promotions,null);
+        }
         public Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                     Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
                     Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope) {
@@ -27,7 +36,12 @@ public interface LanguageModel {
                 null, null, null);
         }
     }
-    record Context(Filter conditions, String pendingQuestion) {}
+    record Context(Filter conditions, String pendingQuestion, List<String> displayedSkus) {
+        public Context {
+            displayedSkus = displayedSkus == null ? List.of() : List.copyOf(displayedSkus);
+        }
+        public Context(Filter conditions, String pendingQuestion) { this(conditions,pendingQuestion,List.of()); }
+    }
     Plan interpret(String question, String store, Context context, Set<String> mentionedBrands);
     String selectEvidence(String question, List<Evidence> evidence);
     Check firstCheck(Filter conditions, int candidates, long remainingMillis);

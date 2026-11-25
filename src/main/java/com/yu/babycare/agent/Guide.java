@@ -39,6 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class Guide {
+    private static final Pattern POSITION = Pattern.compile("第\\s*([0-9０-９零一二两三四五六七八九十百]+)\\s*[款件个]");
     private static final Pattern COMBINED_AMOUNT = Pattern.compile("共\\s*[0-9]+(?:\\.[0-9]+)?\\s*(?:元|块)");
 
     /**
@@ -170,7 +171,28 @@ public class Guide {
         if (invalidAmount(plan.budget()) || invalidAmount(plan.totalBudget()))
             return new Result(previous,Reply.message("clarify","请提供非负的预算金额，精确到分。"));
         // 合并历史条件与本轮槽位；即使后面追问，也要把部分条件带下去。/ Merge history with this turn's slots and carry partial conditions into clarifications.
-        var filter = merge(previous, plan, question);
+        var conditions = merge(previous,plan,question);
+        var reference = reference(question,plan.reference(),mentioned);
+        String selected = previous.selectedSku();
+        if (reference != null) {
+            switch (reference.kind()) {
+                case POSITION -> {
+                    Integer position = reference.position();
+                    if (position == null || position < 1 || position > context.displayedSkus().size())
+                        return clarifySelection(conditions,context.displayedSkus().size());
+                    selected = context.displayedSkus().get(position-1);
+                }
+                case CURRENT -> {
+                    if (selected == null && context.displayedSkus().size()==1) selected = context.displayedSkus().getFirst();
+                    if (selected == null || !context.displayedSkus().contains(selected))
+                        return clarifySelection(conditions,context.displayedSkus().size());
+                }
+                case NEW_LIST -> selected = null;
+            }
+        } else if (!conditions.sameProducts(previous)) {
+            selected = null;
+        }
+        var filter = selected == null ? conditions : conditions.select(selected);
         if (stockMode.isPaused(store.id())) return manualStock(filter);
         var unresolved = new LinkedHashSet<>(mentioned);
         unresolved.removeAll(filter.brands());
@@ -215,6 +237,43 @@ public class Guide {
             if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE) throw ex;
             return new Result(filter,Reply.message("stock_unavailable","库存暂无法确认，请稍后重新查询。"));
         }
+    }
+
+    // Check explicit ordinals against the wording even if the model drops or changes the position.
+    private static LanguageModel.Reference reference(String question, LanguageModel.Reference parsed, Set<String> brands) {
+        var match = POSITION.matcher(question);
+        if (match.find()) {
+            String number = java.text.Normalizer.normalize(match.group(1), java.text.Normalizer.Form.NFKC);
+            int position = match.find() ? 0 : position(number);
+            return new LanguageModel.Reference(LanguageModel.ReferenceKind.POSITION,position);
+        }
+        if (question.contains("换一批")) return new LanguageModel.Reference(LanguageModel.ReferenceKind.NEW_LIST,null);
+        if (brands.isEmpty() && (question.contains("这款") || question.contains("这一款")))
+            return new LanguageModel.Reference(LanguageModel.ReferenceKind.CURRENT,null);
+        return parsed != null && parsed.kind() != null ? parsed : null;
+    }
+
+    private static int position(String number) {
+        if (number.matches("[0-9]+")) {
+            try { return Integer.parseInt(number); }
+            catch (NumberFormatException outOfRange) { return 0; }
+        }
+        // The demo catalog has 50 products. Support Chinese ordinals up to 99.
+        String digits = "零一二三四五六七八九";
+        number = number.replace('两','二');
+        for (int i=1; i<100; i++) {
+            String ordinal = i<10 ? digits.substring(i,i+1)
+                : (i<20 ? "" : String.valueOf(digits.charAt(i/10))) + "十"
+                    + (i%10==0 ? "" : String.valueOf(digits.charAt(i%10)));
+            if (number.equals(ordinal)) return i;
+        }
+        return 0;
+    }
+
+    private static Result clarifySelection(Filter previous, int count) {
+        String prompt = count==0 ? "当前没有可定位的商品列表，请先列出本店商品。"
+            : "请确认是列表中的第几款，可选第 1 至 " + count + " 款。";
+        return new Result(previous,Reply.message("clarify",prompt));
     }
 
     private static Result manualStock(Filter filter) {

@@ -57,3 +57,14 @@ CREATE TABLE IF NOT EXISTS bc_chat_turn (
   PRIMARY KEY (chat_id, version),
   UNIQUE (chat_id, message_id)
 );
+
+-- Latest revision is the current mode; the same row also records the operator's decision.
+CREATE TABLE IF NOT EXISTS bc_stock_mode_change (
+  store_id VARCHAR(32) NOT NULL,
+  revision BIGINT NOT NULL,
+  paused BOOLEAN NOT NULL,
+  operator_name VARCHAR(80) NOT NULL,
+  reason VARCHAR(240) NOT NULL,
+  changed_at BIGINT NOT NULL,
+  PRIMARY KEY (store_id, revision)
+);

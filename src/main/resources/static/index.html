@@ -9,6 +9,14 @@
 <div id="history" aria-live="polite"></div><form id="compose"><label for="question">咨询内容</label><textarea id="question" required maxlength="2000" placeholder="例如，本店有哪些 200 元以内的纸尿裤？"></textarea><button>发送</button></form></section>
 <section id="ops" hidden>
 <div class="bar"><h1>知识运营</h1><a href="/api/ops/alerts/stock-timeouts" target="_blank" rel="noopener">库存超时告警</a><button id="ops-logout" class="quiet">退出</button></div>
+<h2>门店库存核验</h2>
+<form id="stock-mode">
+<label>操作门店<select id="stock-store" required></select></label>
+<p id="stock-status" role="status"></p>
+<label>操作原因<input id="stock-reason" maxlength="240" required></label>
+<button id="stock-action">更新状态</button> <a id="stock-history" target="_blank" rel="noopener">查看操作记录</a>
+</form>
+<h2>导入政策</h2>
 <form id="upload">
 <label>政策编号（换版沿用同一编号）<input name="key" pattern="[A-Za-z0-9_-]{1,80}" placeholder="returns" required></label>
 <label>资料标题<input name="title" maxlength="120" required></label>

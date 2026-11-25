@@ -26,6 +26,7 @@ public class StockLookup {
     public record Alert(Instant at, String messageId, String store, String tool, String outcome,
                         long elapsedMs, long timeoutMs) {}
 
+    private final StoreStockMode mode;
     private final ObjectMapper mapper;
     private final Path source;
     private final Path offlineFlag;
@@ -37,12 +38,13 @@ public class StockLookup {
         new SynchronousQueue<>(), Thread.ofPlatform().daemon().name("stock-lookup-", 0).factory());
     private final Deque<Alert> alerts = new ArrayDeque<>();
 
-    public StockLookup(ObjectMapper mapper,
+    public StockLookup(ObjectMapper mapper, StoreStockMode mode,
             @Value("${babycare.stock-source}") Path source,
             @Value("${babycare.stock-fault-file:}") String offlineFlag,
             @Value("${babycare.stock-delay-file}") String slowFlag,
             @Value("${babycare.stock-simulated-delay}") Duration simulatedDelay,
             @Value("${babycare.stock-timeout}") Duration timeout) {
+        this.mode = mode;
         this.mapper = mapper;
         this.source = source;
         this.offlineFlag = offlineFlag.isBlank() ? null : Path.of(offlineFlag);
@@ -53,6 +55,7 @@ public class StockLookup {
     }
 
     List<Offer> lookup(String store, List<Offer> candidates, long remainingMs) {
+        mode.requireAutomatic(store);
         long budget = Math.min(timeoutMs, Math.max(0, remainingMs));
         long start = System.nanoTime();
         Future<List<Offer>> task;
@@ -62,8 +65,10 @@ public class StockLookup {
             throw unavailable(busy);
         }
         try {
-            return task.get(Math.max(0, TimeUnit.MILLISECONDS.toNanos(budget) - (System.nanoTime() - start)),
+            var rows = task.get(Math.max(0, TimeUnit.MILLISECONDS.toNanos(budget) - (System.nanoTime() - start)),
                 TimeUnit.NANOSECONDS);
+            mode.requireAutomatic(store);
+            return rows;
         } catch (TimeoutException timeout) {
             task.cancel(true);
             recordTimeout(store, start, budget);

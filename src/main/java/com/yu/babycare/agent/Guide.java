@@ -3,6 +3,7 @@ package com.yu.babycare.agent;
 import com.yu.babycare.auth.StoreSecurity;
 import com.yu.babycare.auth.StoreSecurity.Store;
 import com.yu.babycare.catalog.Catalog;
+import com.yu.babycare.catalog.StoreStockMode;
 import com.yu.babycare.catalog.Catalog.Filter;
 import com.yu.babycare.knowledge.Knowledge;
 import java.math.BigDecimal;
@@ -91,6 +92,7 @@ public class Guide {
     private final LanguageModel model;
     /** 已知购买包数时执行价格/库存核验循环 / runs the price/stock verification loop when a pack count is known. */
     private final PurchasePlanner purchases;
+    private final StoreStockMode stockMode;
 
     /**
      * 构造器注入依赖 / Constructor injection of collaborators.
@@ -100,11 +102,12 @@ public class Guide {
      * @param model     语言模型 / the language model
      * @param purchases 购买规划器 / the purchase planner
      */
-    public Guide(Catalog catalog, Knowledge knowledge, LanguageModel model, PurchasePlanner purchases) {
+    public Guide(Catalog catalog, Knowledge knowledge, LanguageModel model, PurchasePlanner purchases, StoreStockMode stockMode) {
         this.catalog = catalog;
         this.knowledge = knowledge;
         this.model = model;
         this.purchases = purchases;
+        this.stockMode = stockMode;
     }
 
     /**
@@ -168,6 +171,7 @@ public class Guide {
             return new Result(previous,Reply.message("clarify","请提供非负的预算金额，精确到分。"));
         // 合并历史条件与本轮槽位；即使后面追问，也要把部分条件带下去。/ Merge history with this turn's slots and carry partial conditions into clarifications.
         var filter = merge(previous, plan, question);
+        if (stockMode.isPaused(store.id())) return manualStock(filter);
         var unresolved = new LinkedHashSet<>(mentioned);
         unresolved.removeAll(filter.brands());
         unresolved.removeAll(filter.excluded());
@@ -188,20 +192,22 @@ public class Guide {
             return new Result(filter,Reply.message("clarify","顾客需要什么尺码？可以直接告诉我包装上标的尺码。"));
         // 透气性等卖点常不在已审核资料里，回答时统一附上缺失说明。/ Attributes like breathability are often absent from approved data, so answers note the gap.
         String missing = question.contains("透气") ? "透气性" : plan.missingField();
-        if (filter.quantity()!=null) {
-            // 已知包数：先做价格/库存核验，再给出可购买结论。/ With a known pack count, verify price and stock before claiming availability.
-            var reply = purchases.run(store, filter);
-            if (!reply.products().isEmpty())
-                reply = new Reply(reply.type(),describeMissing(reply.text(),missing),reply.products(),
-                    reply.citations(),reply.quantity(),reply.totals(),reply.trace(),reply.quotes());
-            return new Result(filter,reply);
-        }
         try {
+            if (filter.quantity()!=null) {
+                // 已知包数：先做价格/库存核验，再给出可购买结论。/ With a known pack count, verify price and stock before claiming availability.
+                var reply = purchases.run(store, filter);
+                if (!reply.products().isEmpty())
+                    reply = new Reply(reply.type(),describeMissing(reply.text(),missing),reply.products(),
+                        reply.citations(),reply.quantity(),reply.totals(),reply.trace(),reply.quotes());
+                return new Result(filter,reply);
+            }
             // 未指定包数：只做轻量筛选（品类/尺码/品牌/预算/在库）。/ No pack count: lightweight filtering only (category/size/brand/budget/stock).
             var rows = catalog.query(store, store.id(), filter);
             if (rows.isEmpty()) return new Result(filter,Reply.message("empty","本店没有符合当前条件的商品。要调整预算或品牌吗？"));
             String message = "本店有 " + rows.size() + " 款商品符合当前筛选条件。";
             return new Result(filter,new Reply("products",describeMissing(message,missing),rows,List.of()));
+        } catch (StoreStockMode.Paused paused) {
+            return manualStock(filter);
         } catch (ResponseStatusException ex) {
             // 库存数据源故障降级为可重试提示；其它异常继续上抛，避免掩盖真实问题。/ A stock-source fault degrades to a retryable reply; other errors propagate.
             if (ex.getStatusCode()==HttpStatus.GATEWAY_TIMEOUT)
@@ -209,6 +215,10 @@ public class Guide {
             if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE) throw ex;
             return new Result(filter,Reply.message("stock_unavailable","库存暂无法确认，请稍后重新查询。"));
         }
+    }
+
+    private static Result manualStock(Filter filter) {
+        return new Result(filter, Reply.message("stock_manual", StoreStockMode.MANUAL_MESSAGE));
     }
 
     private static Result denied(Filter previous) {

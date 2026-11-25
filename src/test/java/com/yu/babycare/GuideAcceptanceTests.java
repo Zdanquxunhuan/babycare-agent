@@ -303,6 +303,52 @@ class GuideAcceptanceTests {
         runBrowser("stock-timeout.cjs");
     }
 
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST",matches="1")
+    void storeManualStockInBrowser() throws Exception {
+        var shopping = purchase(2,"300",Scope.TOTAL,Set.of("绒朵"));
+        var followUp = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null);
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(shopping);
+        when(model.interpret(eq("手上有明显污垢该怎么清洁？"),anyString(),any(),anySet()))
+            .thenReturn(plan(Intent.KNOWLEDGE,null,null,null,null));
+        when(model.interpret(eq("再查一下"),anyString(),any(),anySet())).thenReturn(followUp);
+        when(model.selectEvidence(anyString(),anyList())).thenReturn("hand-hygiene-1.0");
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.STOCK);
+        runBrowser("stock-mode.cjs");
+        // Only the unaffected store and the resumed request reached the purchase planner.
+        verify(model,times(2)).firstCheck(any(),anyInt(),anyLong());
+    }
+
+    @Test void stockModeRejectsUnauthorizedAndStaleWrites() throws Exception {
+        String path = "/api/ops/stock-mode/STORE-01";
+        login("direct");
+        assertEquals(403,request("POST",path,"application/json",
+            "{\"expectedRevision\":0,\"paused\":true,\"reason\":\"测试\"}").statusCode());
+        assertEquals(403,request("GET",path+"/history",null,null).statusCode());
+        authenticate("ops","ops-test");
+        var history = ok(request("GET",path+"/history",null,null));
+        long rev = history.isEmpty() ? 0 : history.path(0).path("revision").asLong();
+        String body = json.writeValueAsString(Map.of("expectedRevision",rev,"paused",true,"reason","测试暂停"));
+        assertEquals(404,request("POST","/api/ops/stock-mode/UNKNOWN","application/json",body).statusCode());
+        assertEquals(400,request("POST",path,"application/json",body.replace("测试暂停"," ")).statusCode());
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            Callable<Integer> submit = () -> request("POST",path,"application/json",body).statusCode();
+            var one = pool.submit(submit);
+            var two = pool.submit(submit);
+            assertEquals(Set.of(200,409),Set.of(one.get(),two.get()));
+        } finally {
+            var latest = ok(request("GET",path+"/history",null,null)).path(0);
+            if (latest.path("paused").asBoolean()) {
+                String restore = json.writeValueAsString(Map.of("expectedRevision",latest.path("revision").asLong(),
+                    "paused",false,"reason","测试恢复"));
+                ok(request("POST",path,"application/json",restore));
+            }
+        }
+        var events = ok(request("GET",path+"/history",null,null));
+        assertEquals(rev+2,events.path(0).path("revision").asLong());
+        assertEquals("ops",events.path(1).path("operator").asString());
+    }
+
     @Test void directOfferDistinguishesTimeoutFromOffline() throws Exception {
         login("direct");
         String path = "/api/stores/STORE-01/offers/DEMO-008";

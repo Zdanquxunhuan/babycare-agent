@@ -1,6 +1,8 @@
 package com.yu.babycare.auth;
 
 import java.text.Normalizer;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,6 +58,10 @@ public class StoreSecurity {
         } catch (UsernameNotFoundException revoked) {
             return false;
         }
+    }
+
+    public static List<Store> stores() {
+        return STORES.values().stream().distinct().sorted(Comparator.comparing(Store::id)).toList();
     }
 
     public static Store store(Authentication auth) {

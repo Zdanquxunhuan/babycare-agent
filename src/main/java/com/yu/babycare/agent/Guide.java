@@ -212,7 +212,8 @@ public class Guide {
         // 合并历史条件与本轮槽位；即使后面追问，也要把部分条件带下去。/ Merge history with this turn's slots and carry partial conditions into clarifications.
         boolean review = plan.intent() == LanguageModel.Intent.REVIEW;
         var conditions = review ? previous : merge(previous,plan,question);
-        var reference = reference(question,plan.reference(),mentioned);
+        var reference = reference(question,plan.reference(),mentioned,
+            context.displayedSkus().isEmpty() && plan.brandChoice()!=null && plan.category()!=null && plan.size()!=null);
         String selected = previous.selectedSku();
         if (reference != null) {
             switch (reference.kind()) {
@@ -308,7 +309,7 @@ public class Guide {
     }
 
     // Check explicit ordinals against the wording even if the model drops or changes the position.
-    private static LanguageModel.Reference reference(String question, LanguageModel.Reference parsed, Set<String> brands) {
+    private static LanguageModel.Reference reference(String question, LanguageModel.Reference parsed, Set<String> brands, boolean namedStockoutRequest) {
         var match = POSITION.matcher(question);
         if (match.find()) {
             String number = java.text.Normalizer.normalize(match.group(1), java.text.Normalizer.Form.NFKC);
@@ -327,6 +328,8 @@ public class Guide {
         if (question.contains("换一批")) return new LanguageModel.Reference(LanguageModel.ReferenceKind.NEW_LIST,null);
         if (brands.isEmpty() && (question.contains("这款") || question.contains("这一款")))
             return new LanguageModel.Reference(LanguageModel.ReferenceKind.CURRENT,null);
+        // A first-turn purchase can name the product directly. Pack counts do not identify list positions.
+        if (namedStockoutRequest && !brands.isEmpty()) return null;
         return parsed != null && parsed.kind() != null ? parsed : null;
     }
 

@@ -122,7 +122,7 @@ class GuideAcceptanceTests {
     @Test void shortageKeepsBrandUntilCustomerAllowsAlternatives() throws Exception {
         login("direct");
         var strict = new Plan(Intent.PRODUCT,null,"纸尿裤","L",null,null,Set.of("绒朵"),null,null,
-            null,null,4,BigDecimal.valueOf(450),Scope.TOTAL,null,null,null,
+            null,null,4,BigDecimal.valueOf(450),Scope.TOTAL,null,new Reference(ReferenceKind.CURRENT,null),null,
             BrandChoice.REQUIRE_ORIGINAL);
         var flexible = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,null,null,null,
             null,null,null,BrandChoice.ALLOW_ALTERNATIVE);

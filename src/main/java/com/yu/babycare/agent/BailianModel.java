@@ -64,6 +64,7 @@ public class BailianModel implements LanguageModel {
             （budget 单包预算、totalBudget 总预算、quantity、size、category、brands、inStock、exclude）。
             缺货整单换款属 PRODUCT。brandChoice 仅提取本轮明确表达：最好原品牌、其他牌子也行或允许换牌子用 ALLOW_ALTERNATIVE；
             只能原品牌用 REQUIRE_ORIGINAL；只能换尺码用 SIZE_ONLY。原品牌仍写入 brands，续答未提品牌时省略 brands。
+            首轮按品牌、品类和尺码询问缺货替代时省略 reference；两包是 quantity，不是商品序号。
             改换偏好时不要用 clear 清空原品牌、尺码或预算。没有表达替代偏好时省略 brandChoice。
             缺失商品属性如透气性填 missingField。
             同一句同时问商品价格、库存或优惠和售后时用 PRODUCT_POLICY。商品条件按 PRODUCT 提取，

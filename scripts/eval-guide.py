@@ -106,7 +106,12 @@ def evaluate(url,password,model):
             passed=passed,completed=len(rows),total=len(CASES),cases=rows),ensure_ascii=False,indent=2),encoding="utf-8")
         print(f"{kind} {len(rows)}/{len(CASES)}: {'PASS' if rows[-1]['passed'] else 'FAIL'}",flush=True)
     print(f"{passed}/{len(rows)}: {REPORT}")
-    return passed==len(rows)
+    control = run_case(guide,"消歧","第一款还是第二款，我没想好。",EXPECTED)
+    report = json.loads(REPORT.read_text(encoding="utf-8"))
+    report["undecidedControl"] = control
+    REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
+    print("犹豫对照:", "PASS" if control["passed"] else "FAIL")
+    return passed==len(rows) and control["passed"]
 
 
 EXPECTED = ["模拟售后政策","1","模拟售后政策 / 第4条 已拆包","拆包商品需提供批次与照片，由售后专员复核后答复。"]

@@ -1,0 +1,956 @@
+{
+  "model": "qwen-plus",
+  "store": "STORE-01",
+  "retrieval": "LEXICAL",
+  "passed": 8,
+  "completed": 8,
+  "total": 8,
+  "cases": [
+    {
+      "scenario": "改选",
+      "wording": "刚才说第二款，改第一款，也是两包。",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "第二款买两包，今天有活动吗？如果拆了一包还能退吗？",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 有适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        },
+        {
+          "question": "刚才说第二款，改第一款，也是两包。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-003": 212
+            },
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-003": 212
+            },
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 无适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "scenario": "改选",
+      "wording": "那换回列表最前面那个，两包算下来多少？",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "第二款买两包，今天有活动吗？如果拆了一包还能退吗？",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 有适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        },
+        {
+          "question": "那换回列表最前面那个，两包算下来多少？",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-003": 212
+            },
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-003": 212
+            },
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 无适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "scenario": "联查",
+      "wording": "排后面那个拿两包多少钱？拆了一包还能退吗？",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "排后面那个拿两包多少钱？拆了一包还能退吗？",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 有适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "scenario": "联查",
+      "wording": "第二个买两包按活动算多少，已经拆包能不能退？",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "第二个买两包按活动算多少，已经拆包能不能退？",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 有适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "scenario": "消歧",
+      "wording": "这款拆了，帮我找售后。",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "这款拆了，帮我找售后。",
+          "expected": {
+            "type": "clarify",
+            "asksPosition": true,
+            "draftSku": null,
+            "reviews": 0
+          },
+          "actual": {
+            "type": "clarify",
+            "skus": [],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": true,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "售后复核需要定位商品。请确认是列表中的第几款，可选第 1 至 2 款。",
+          "trace": [],
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "scenario": "消歧",
+      "wording": "这个拆开了，帮我交给售后看一下。",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "这个拆开了，帮我交给售后看一下。",
+          "expected": {
+            "type": "clarify",
+            "asksPosition": true,
+            "draftSku": null,
+            "reviews": 0
+          },
+          "actual": {
+            "type": "clarify",
+            "skus": [],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": true,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "售后复核需要定位商品。请确认是列表中的第几款，可选第 1 至 2 款。",
+          "trace": [],
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "scenario": "取消",
+      "wording": "先别提交，我只是想看看规定。",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "第二款买两包，今天有活动吗？如果拆了一包还能退吗？",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 有适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        },
+        {
+          "question": "帮我把第二款的拆包问题交给售后",
+          "expected": {
+            "type": "review_draft",
+            "draftSku": "DEMO-008",
+            "reviews": 0
+          },
+          "actual": {
+            "type": "review_draft",
+            "skus": [],
+            "quantity": null,
+            "totals": {},
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": "DEMO-008",
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "请核对复核草稿，确认后提交给本店售后。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "先别提交，我只是想看看规定。",
+          "expected": {
+            "type": "knowledge",
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "reviews": 0
+          },
+          "actual": {
+            "type": "knowledge",
+            "skus": [],
+            "quantity": null,
+            "totals": {},
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "拆包商品需提供批次与照片，由售后专员复核后答复。",
+          "trace": [],
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "scenario": "取消",
+      "wording": "不用转人工了，给我看一下拆了一包还能不能退的条款。",
+      "passed": true,
+      "turns": [
+        {
+          "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-003",
+              "DEMO-008"
+            ],
+            "quantity": null,
+            "totals": {},
+            "citations": [],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "本店有 2 款商品符合当前筛选条件。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "第二款买两包，今天有活动吗？如果拆了一包还能退吗？",
+          "expected": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "reviews": 0
+          },
+          "actual": {
+            "type": "products",
+            "skus": [
+              "DEMO-008"
+            ],
+            "quantity": 2,
+            "totals": {
+              "DEMO-008": 218
+            },
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": true,
+            "stockChecked": true,
+            "reviews": 0
+          },
+          "text": "本店核验活动后有 1 款有货商品符合当前购买条件。",
+          "trace": [
+            "本店商品检索 · 1 款候选",
+            "选择核验顺序 · 活动核验优先",
+            "活动核验 · 有适用活动",
+            "价格核验 · 1 款中有 1 款通过",
+            "库存核验 · 1 款中有 1 款通过",
+            "完成 · 复核购买数量及预算"
+          ],
+          "mismatches": []
+        },
+        {
+          "question": "帮我把第二款的拆包问题交给售后",
+          "expected": {
+            "type": "review_draft",
+            "draftSku": "DEMO-008",
+            "reviews": 0
+          },
+          "actual": {
+            "type": "review_draft",
+            "skus": [],
+            "quantity": null,
+            "totals": {},
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": "DEMO-008",
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "请核对复核草稿，确认后提交给本店售后。",
+          "trace": [],
+          "mismatches": []
+        },
+        {
+          "question": "不用转人工了，给我看一下拆了一包还能不能退的条款。",
+          "expected": {
+            "type": "knowledge",
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "reviews": 0
+          },
+          "actual": {
+            "type": "knowledge",
+            "skus": [],
+            "quantity": null,
+            "totals": {},
+            "citations": [
+              [
+                "模拟售后政策",
+                "1",
+                "模拟售后政策 / 第4条 已拆包",
+                "拆包商品需提供批次与照片，由售后专员复核后答复。"
+              ]
+            ],
+            "draftSku": null,
+            "asksPosition": false,
+            "priceChecked": false,
+            "stockChecked": false,
+            "reviews": 0
+          },
+          "text": "拆包商品需提供批次与照片，由售后专员复核后答复。",
+          "trace": [],
+          "mismatches": []
+        }
+      ]
+    }
+  ],
+  "undecidedControl": {
+    "scenario": "消歧",
+    "wording": "第一款还是第二款，我没想好。",
+    "passed": true,
+    "turns": [
+      {
+        "question": "本店有哪些 L 码纸尿裤？只看芽禾和绒朵。",
+        "expected": {
+          "type": "products",
+          "skus": [
+            "DEMO-003",
+            "DEMO-008"
+          ],
+          "reviews": 0
+        },
+        "actual": {
+          "type": "products",
+          "skus": [
+            "DEMO-003",
+            "DEMO-008"
+          ],
+          "quantity": null,
+          "totals": {},
+          "citations": [],
+          "draftSku": null,
+          "asksPosition": false,
+          "priceChecked": false,
+          "stockChecked": false,
+          "reviews": 0
+        },
+        "text": "本店有 2 款商品符合当前筛选条件。",
+        "trace": [],
+        "mismatches": []
+      },
+      {
+        "question": "第一款还是第二款，我没想好。",
+        "expected": {
+          "type": "clarify",
+          "asksPosition": true,
+          "draftSku": null,
+          "reviews": 0
+        },
+        "actual": {
+          "type": "clarify",
+          "skus": [],
+          "quantity": null,
+          "totals": {},
+          "citations": [],
+          "draftSku": null,
+          "asksPosition": true,
+          "priceChecked": false,
+          "stockChecked": false,
+          "reviews": 0
+        },
+        "text": "请确认是列表中的第几款，可选第 1 至 2 款。",
+        "trace": [],
+        "mismatches": []
+      }
+    ]
+  }
+}

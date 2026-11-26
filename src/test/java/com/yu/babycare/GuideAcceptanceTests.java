@@ -380,6 +380,37 @@ class GuideAcceptanceTests {
         runBrowser("displayed-products.cjs");
     }
 
+    @Test void correctionMustAgreeWithExplicitWordingBeforeRepricing() throws Exception {
+        login("direct");
+        var first = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,2,null,null,true,
+            new Reference(ReferenceKind.POSITION,1));
+        var second = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,2,null,null,true,
+            new Reference(ReferenceKind.POSITION,2));
+        when(model.interpret(anyString(),eq("STORE-01"),any(),anySet()))
+            .thenReturn(listTwoBrands(),second,first,second,second);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        ask("本店有哪些 L 码纸尿裤？只看芽禾和绒朵。");
+        ask("第二款买两包");
+        assertEquals(212,ask("刚才说第二款，改第一款，也是两包。").path("totals").path("DEMO-003").asInt());
+        assertEquals("clarify",ask("第二款，换成第一款").path("type").asString());
+        assertEquals("clarify",ask("第一款还是第二款，我没想好。").path("type").asString());
+    }
+
+    @Test void quotedPayableIncludesActivityUnlessRequestSpecifiesRegularPrice() throws Exception {
+        login("direct");
+        var quote = new Plan(Intent.PRODUCT_POLICY,null,null,null,null,null,null,null,null,null,null,2,null,null,
+            null,new Reference(ReferenceKind.POSITION,2),"拆了一包还能退吗？");
+        var regular = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,2,null,null,
+            false,new Reference(ReferenceKind.POSITION,2));
+        when(model.interpret(anyString(),eq("STORE-01"),any(),anySet())).thenReturn(listTwoBrands(),quote,regular);
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.PRICE);
+        ask("本店有哪些 L 码纸尿裤？只看芽禾和绒朵。");
+        var combined = ask("排后面那个拿两包多少钱？拆了一包还能退吗？");
+        assertEquals(218,combined.path("totals").path("DEMO-008").asInt());
+        assertFalse(combined.path("policyText").asString().isBlank());
+        assertEquals(238,ask("只按普通价算，两包多少钱？").path("totals").path("DEMO-008").asInt());
+    }
+
     private void stubQuoteAndPolicy() {
         var compound = new Plan(Intent.PRODUCT_POLICY,null,null,null,null,null,null,null,null,null,null,
             2,null,null,true,new Reference(ReferenceKind.POSITION,2),"如果拆了一包还能退吗？");

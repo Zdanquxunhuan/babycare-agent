@@ -296,7 +296,16 @@ public class Guide {
         var match = POSITION.matcher(question);
         if (match.find()) {
             String number = java.text.Normalizer.normalize(match.group(1), java.text.Normalizer.Form.NFKC);
-            int position = match.find() ? 0 : position(number);
+            int position = position(number);
+            int end = match.end();
+            if (match.find()) {
+                String change = question.substring(end,match.start()).strip();
+                int target = position(java.text.Normalizer.normalize(match.group(1),java.text.Normalizer.Form.NFKC));
+                boolean confirmed = change.matches("[，,。；;、 ]*(现在|还是决定|我想)?(改|换)(成|为|选|回)?")
+                    && parsed != null && parsed.kind()==LanguageModel.ReferenceKind.POSITION
+                    && Objects.equals(parsed.position(),target) && !match.find();
+                position = confirmed ? target : 0;
+            }
             return new LanguageModel.Reference(LanguageModel.ReferenceKind.POSITION,position);
         }
         if (question.contains("换一批")) return new LanguageModel.Reference(LanguageModel.ReferenceKind.NEW_LIST,null);
@@ -435,13 +444,19 @@ public class Guide {
             else if (old.budget()!=null && old.totalBudget()==null) unit=amount;
             else pending=amount;
         }
+        Boolean promotions = p.promotions()!=null ? p.promotions() : old.promotions();
+        // A quantity plus a payable-price question asks for the store's effective price.
+        // Preserve an explicit ordinary-price request, including one inherited from a prior turn.
+        if (promotions==null && quantity!=null && List.of("多少钱","多少元","实付","到手价","一共多少").stream().anyMatch(question::contains)
+                && List.of("原价","普通价","不算活动","不算优惠").stream().noneMatch(question::contains))
+            promotions = true;
         return new Filter(value(p.category(),old.category(),clear.contains("category")),
             value(p.size(),old.size(),clear.contains("size")),unit,
             // inStock 未给出则继承；显式 clear 时回到 false。/ Inherit unless explicitly cleared, then default to false.
             p.inStock()!=null ? p.inStock() : old.inStock() && !clear.contains("inStock"),
             // 品牌集合同理：本轮优先，clear 置空，否则继承。/ Brands: this turn wins, clear empties them, otherwise inherit.
             p.brands()!=null ? p.brands() : clear.contains("brands") ? Set.of() : old.brands(), Set.copyOf(excluded),
-            quantity,total,pending,p.promotions()!=null ? p.promotions() : old.promotions());
+            quantity,total,pending,promotions);
     }
 
     /**

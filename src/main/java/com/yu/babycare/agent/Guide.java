@@ -166,8 +166,11 @@ public class Guide {
         // 防止跨店查询：模型解析出的门店必须与登录账号所属门店一致。/ Block cross-store access: the planned store must match the authenticated store.
         if (plan.store() != null && !store.id().equals(plan.store()))
             return denied(previous);
-        if (plan.intent() == LanguageModel.Intent.KNOWLEDGE) {
-            var hit = selectVisible(store,question,knowledge.search(store.id(),question));
+        if (plan.intent() == LanguageModel.Intent.KNOWLEDGE || plan.intent() == LanguageModel.Intent.REVIEW_POLICY) {
+            boolean resume = plan.intent() == LanguageModel.Intent.REVIEW_POLICY && context.reviewQuestion()!=null;
+            String query = resume ? context.reviewQuestion()+"；本轮只核对售后规定："+question : question;
+            var hits = resume ? knowledge.searchPolicies(store.id(),query) : knowledge.search(store.id(),query);
+            var hit = selectVisible(store,query,hits);
             return new Result(previous,hit.map(e -> new Reply("knowledge",e.excerpt(),List.of(),List.of(e)))
                 .orElseGet(() -> Reply.message("no_evidence","现有审核资料不足以回答这个问题。")));
         }

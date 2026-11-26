@@ -120,7 +120,9 @@ class Checkpoints {
         var displayed = claim.context().displayedSkus();
         if (result.filter().selectedSku() == null && (reply.type().equals("products") || reply.type().equals("empty")))
             displayed = reply.products().stream().map(product -> product.sku()).toList();
-        var context = new Context(result.filter(),reply.type().equals("clarify") ? reply.text() : null,displayed);
+        var draft = reply.reviewDraft();
+        String reviewQuestion = draft == null ? null : draft.originalQuestion()+" / "+draft.request();
+        var context = new Context(result.filter(),reply.type().equals("clarify") ? reply.text() : null,displayed,reviewQuestion);
         long now = System.currentTimeMillis();
         int updated = db.update("""
             UPDATE bc_chat_checkpoint SET version=version+1,

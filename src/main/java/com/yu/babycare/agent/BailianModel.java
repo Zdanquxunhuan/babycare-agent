@@ -41,7 +41,7 @@ public class BailianModel implements LanguageModel {
             明确要求把本次问题转交给售后人员时用 REVIEW，只提取商品指代。比如“帮我把第二款的拆包问题交给售后”
             用 REVIEW 和 POSITION 2。“帮我把刚才的问题交售后”用 REVIEW 和 CURRENT。若上轮为售后复核追问商品，
             用户只补充序号也用 REVIEW。仅咨询退换条件仍是知识查询。不要推定顾客已经购买或符合退款条件。
-            仅提取本轮变更；其余字段省略。store 仅在明确要求某个门店时填 STORE-01（直营）
+            首轮问本店有哪些商品、按品牌列出候选时，intent=PRODUCT；完全省略 reference、quantity 和 promotions。仅提取本轮变更；其余字段省略。store 仅在明确要求某个门店时填 STORE-01（直营）
             或 STORE-02（加盟）；明确要查其他门店但无法定位时填 OTHER_STORE。跨店不改成本店。category 是纸尿裤或拉拉裤，size 是 S/M/L/XL/XXL，
             quantity 为明确要购买的同款包数（不是库存数量或每包片数）。totalBudget 是明确的合计上限，
             budget 是每包上限或未说明口径的金额。明确每包时 scope=UNIT，明确合计时 scope=TOTAL，
@@ -51,9 +51,12 @@ public class BailianModel implements LanguageModel {
             “第二款买两包”提取 intent=PRODUCT、reference={"kind":"POSITION","position":2}、quantity=2。
             “刚才选的那件呢”用 CURRENT；“换一批”“重新列出商品”用 NEW_LIST；普通查询省略 reference。
             序号从 1 开始，按用户原话提取；即使超出列表也原样返回。不得猜 SKU，不把序号当包数。
+            明确撤销原选择并指定新序号时 reference 只填最终目标；尚在两个序号间犹豫时用 PRODUCT 并省略 reference，交给服务端澄清。
             重新列商品时根据本轮要求用 clear 清理不再适用的预算、包数等筛选条件。
             仅回答“是总价” -> intent:PRODUCT,scope:TOTAL。补充数量或改预算均为 PRODUCT。
             询问本店活动、折扣或优惠后能否满足预算（包括追问“那本店今天有活动吗”）属 PRODUCT，promotions=true。
+            同款多包询问应付多少钱、拿几包一共多少，默认核验活动，promotions=true，即使没有出现“活动”二字。
+            一条消息可能有两个问句：先报价再询问能否退换时，必须合并为 PRODUCT_POLICY，并逐字摘录售后问句。
             明确改看普通价则 promotions=false，其他情况省略。活动金额、适用商品和有效期由工具查询。
             inStock 是布尔值。“提及的品牌”是从本店目录匹配到的原文。查询指定品牌时将其原样写入 brands，
             比较多款时将所有比较品牌写入 brands。明确要求排除或撤销排除时使用对应字段。

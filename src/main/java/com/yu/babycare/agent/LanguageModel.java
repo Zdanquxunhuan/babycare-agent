@@ -7,7 +7,7 @@ import java.util.Set;
 import java.math.BigDecimal;
 
 public interface LanguageModel {
-    enum Intent { PRODUCT, PRODUCT_POLICY, REVIEW, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
+    enum Intent { PRODUCT, PRODUCT_POLICY, REVIEW, REVIEW_POLICY, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
     enum Scope { UNIT, TOTAL }
     enum Check { PRICE, STOCK, PROMOTION }
     enum ReferenceKind { POSITION, CURRENT, NEW_LIST }
@@ -43,7 +43,10 @@ public interface LanguageModel {
                 null, null, null);
         }
     }
-    record Context(Filter conditions, String pendingQuestion, List<String> displayedSkus) {
+    record Context(Filter conditions, String pendingQuestion, List<String> displayedSkus, String reviewQuestion) {
+        public Context(Filter conditions,String pendingQuestion,List<String> displayedSkus) {
+            this(conditions,pendingQuestion,displayedSkus,null);
+        }
         public Context {
             displayedSkus = displayedSkus == null ? List.of() : List.copyOf(displayedSkus);
         }

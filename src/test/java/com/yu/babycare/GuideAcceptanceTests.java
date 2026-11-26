@@ -413,6 +413,38 @@ class GuideAcceptanceTests {
         runBrowser("policy-acceptance.cjs","--quote-policy","--review");
     }
 
+    @Test void reviewFollowupRecallsQuestionAndRechecksPolicy() throws Exception {
+        authenticate("ops","ops-test");
+        String key = "resume-"+UUID.randomUUID();
+        String revision = "/api/ops/policies/"+key+"/1";
+        ok(request("POST","/api/ops/policies","application/json",json.writeValueAsString(Map.of(
+            "key",key,"title","模拟售后政策","scope","STORE-01",
+            "markdown",Files.readString(Path.of("fixtures/policies/returns-v2.md"))))));
+        assertEquals(204,request("POST",revision+"/publish",null,null).statusCode());
+        try {
+            login("direct");
+            stubReview();
+            String original = "第二款买两包，今天有活动吗？如果拆了一包还能退吗？";
+            String followup = "先别提交，我只是想看看规定。";
+            when(model.interpret(eq(followup),eq("STORE-01"),any(),anySet())).thenAnswer(call -> {
+                Context context = call.getArgument(2);
+                assertTrue(context.reviewQuestion().contains(original));
+                return plan(Intent.REVIEW_POLICY,null,null,null,null);
+            });
+            ask("本店有哪些 L 码纸尿裤？只看芽禾和绒朵。");
+            ask(original);
+            ask(HANDOFF);
+            var answer = ask(followup);
+            assertEquals("knowledge",answer.path("type").asString());
+            assertTrue(answer.path("citations").path(0).path("section").asString().contains("已拆包"));
+            verify(model).selectEvidence(contains("本轮只核对售后规定："+followup),anyList());
+            assertEquals(0,ok(request("GET","/api/conversations/"+chat,null,null)).path("reviews").size());
+        } finally {
+            authenticate("ops","ops-test");
+            assertEquals(204,request("POST",revision+"/withdraw",null,null).statusCode());
+        }
+    }
+
     @Test void humanReviewIsConfirmedOnceAndScopedToStore() throws Exception {
         login("direct");
         stubReview();

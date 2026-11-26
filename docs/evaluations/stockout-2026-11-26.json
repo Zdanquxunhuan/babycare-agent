@@ -1,0 +1,325 @@
+{
+  "revision": "36798a6",
+  "dataSource": "模拟直营店",
+  "model": "qwen-plus",
+  "cases": [
+    {
+      "question": "要两包 L 码纸尿裤，最好绒朵，其他牌子也行，总共220元",
+      "expectedSkus": [
+        "DEMO-003"
+      ],
+      "expectedTotals": {
+        "DEMO-003": 212
+      },
+      "expectedType": "products",
+      "reply": {
+        "type": "products",
+        "text": "绒朵同款最多有 1 包，还差 1 包。按本店同品类、同尺码查找其他品牌。本店核验活动后有 1 款有货商品符合当前购买条件。",
+        "products": [
+          {
+            "sku": "DEMO-003",
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "brand": "芽禾",
+            "category": "纸尿裤",
+            "size": "L",
+            "pieces": 52,
+            "price": 106,
+            "packs": 12,
+            "snapshot": "2026-11-23",
+            "queriedAt": "2026-11-26T07:58:46.691992246Z",
+            "source": "模拟POS快照"
+          }
+        ],
+        "citations": [],
+        "quantity": 2,
+        "totals": {
+          "DEMO-003": 212
+        },
+        "trace": [
+          "本店原品牌检索 · 1 款",
+          "原款库存核验 · 同款最多 1 包",
+          "本店商品检索 · 4 款候选",
+          "选择核验顺序 · 活动核验优先",
+          "活动核验 · 无适用活动",
+          "价格核验 · 4 款中有 4 款通过",
+          "库存核验 · 4 款中有 3 款通过",
+          "完成 · 复核购买数量及预算"
+        ],
+        "quotes": {
+          "DEMO-003": {
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "regularTotal": 212,
+            "activity": null,
+            "discount": 0,
+            "payable": 212,
+            "meetsBudget": true
+          }
+        },
+        "policyText": null,
+        "reviewDraft": null
+      },
+      "passed": true
+    },
+    {
+      "question": "要两包 L 码纸尿裤，只能要绒朵，总共220元",
+      "expectedSkus": [],
+      "expectedTotals": {},
+      "expectedType": "empty",
+      "reply": {
+        "type": "empty",
+        "text": "绒朵同款最多有 1 包，还差 1 包。需要调整购买条件吗？",
+        "products": [],
+        "citations": [],
+        "quantity": null,
+        "totals": {},
+        "trace": [
+          "本店原品牌检索 · 1 款",
+          "原款库存核验 · 同款最多 1 包",
+          "停止 · 绒朵同款最多有 1 包，还差 1 包。需要调整购买条件吗？"
+        ],
+        "quotes": {},
+        "policyText": null,
+        "reviewDraft": null
+      },
+      "passed": true
+    },
+    {
+      "question": "要两包 L 码纸尿裤，绒朵缺货可以换牌子，总共220元",
+      "expectedSkus": [
+        "DEMO-003"
+      ],
+      "expectedTotals": {
+        "DEMO-003": 212
+      },
+      "expectedType": "products",
+      "reply": {
+        "type": "products",
+        "text": "绒朵同款最多有 1 包，还差 1 包。按本店同品类、同尺码查找其他品牌。本店核验活动后有 1 款有货商品符合当前购买条件。",
+        "products": [
+          {
+            "sku": "DEMO-003",
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "brand": "芽禾",
+            "category": "纸尿裤",
+            "size": "L",
+            "pieces": 52,
+            "price": 106,
+            "packs": 12,
+            "snapshot": "2026-11-23",
+            "queriedAt": "2026-11-26T07:58:52.174703869Z",
+            "source": "模拟POS快照"
+          }
+        ],
+        "citations": [],
+        "quantity": 2,
+        "totals": {
+          "DEMO-003": 212
+        },
+        "trace": [
+          "本店原品牌检索 · 1 款",
+          "原款库存核验 · 同款最多 1 包",
+          "本店商品检索 · 4 款候选",
+          "选择核验顺序 · 活动核验优先",
+          "活动核验 · 无适用活动",
+          "价格核验 · 4 款中有 4 款通过",
+          "库存核验 · 4 款中有 3 款通过",
+          "完成 · 复核购买数量及预算"
+        ],
+        "quotes": {
+          "DEMO-003": {
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "regularTotal": 212,
+            "activity": null,
+            "discount": 0,
+            "payable": 212,
+            "meetsBudget": true
+          }
+        },
+        "policyText": null,
+        "reviewDraft": null
+      },
+      "passed": true
+    },
+    {
+      "question": "要两包 L 码纸尿裤，绒朵缺货可以换牌子，每包220元",
+      "expectedSkus": [
+        "DEMO-003",
+        "DEMO-013",
+        "DEMO-018"
+      ],
+      "expectedTotals": {
+        "DEMO-003": 212,
+        "DEMO-013": 264,
+        "DEMO-018": 290
+      },
+      "expectedType": "products",
+      "reply": {
+        "type": "products",
+        "text": "绒朵同款最多有 1 包，还差 1 包。按本店同品类、同尺码查找其他品牌。本店核验活动后有 3 款有货商品符合当前购买条件。",
+        "products": [
+          {
+            "sku": "DEMO-003",
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "brand": "芽禾",
+            "category": "纸尿裤",
+            "size": "L",
+            "pieces": 52,
+            "price": 106,
+            "packs": 12,
+            "snapshot": "2026-11-23",
+            "queriedAt": "2026-11-26T07:58:55.538944117Z",
+            "source": "模拟POS快照"
+          },
+          {
+            "sku": "DEMO-013",
+            "name": "小晴 纸尿裤 L 码 52 片",
+            "brand": "小晴",
+            "category": "纸尿裤",
+            "size": "L",
+            "pieces": 52,
+            "price": 132,
+            "packs": 18,
+            "snapshot": "2026-11-23",
+            "queriedAt": "2026-11-26T07:58:55.538944117Z",
+            "source": "模拟POS快照"
+          },
+          {
+            "sku": "DEMO-018",
+            "name": "沐叶 纸尿裤 L 码 52 片",
+            "brand": "沐叶",
+            "category": "纸尿裤",
+            "size": "L",
+            "pieces": 52,
+            "price": 145,
+            "packs": 9,
+            "snapshot": "2026-11-23",
+            "queriedAt": "2026-11-26T07:58:55.538944117Z",
+            "source": "模拟POS快照"
+          }
+        ],
+        "citations": [],
+        "quantity": 2,
+        "totals": {
+          "DEMO-003": 212,
+          "DEMO-013": 264,
+          "DEMO-018": 290
+        },
+        "trace": [
+          "本店原品牌检索 · 1 款",
+          "原款库存核验 · 同款最多 1 包",
+          "本店商品检索 · 4 款候选",
+          "选择核验顺序 · 活动核验优先",
+          "活动核验 · 无适用活动",
+          "价格核验 · 4 款中有 4 款通过",
+          "库存核验 · 4 款中有 3 款通过",
+          "完成 · 复核购买数量及预算"
+        ],
+        "quotes": {
+          "DEMO-003": {
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "regularTotal": 212,
+            "activity": null,
+            "discount": 0,
+            "payable": 212,
+            "meetsBudget": true
+          },
+          "DEMO-013": {
+            "name": "小晴 纸尿裤 L 码 52 片",
+            "regularTotal": 264,
+            "activity": null,
+            "discount": 0,
+            "payable": 264,
+            "meetsBudget": true
+          },
+          "DEMO-018": {
+            "name": "沐叶 纸尿裤 L 码 52 片",
+            "regularTotal": 290,
+            "activity": null,
+            "discount": 0,
+            "payable": 290,
+            "meetsBudget": true
+          }
+        },
+        "policyText": null,
+        "reviewDraft": null
+      },
+      "passed": true
+    },
+    {
+      "question": "要两包 L 码纸尿裤，绒朵缺货，可以换牌子，总共220元",
+      "expectedSkus": [
+        "DEMO-003"
+      ],
+      "expectedTotals": {
+        "DEMO-003": 212
+      },
+      "expectedType": "products",
+      "reply": {
+        "type": "products",
+        "text": "绒朵同款最多有 1 包，还差 1 包。按本店同品类、同尺码查找其他品牌。本店核验活动后有 1 款有货商品符合当前购买条件。",
+        "products": [
+          {
+            "sku": "DEMO-003",
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "brand": "芽禾",
+            "category": "纸尿裤",
+            "size": "L",
+            "pieces": 52,
+            "price": 106,
+            "packs": 12,
+            "snapshot": "2026-11-23",
+            "queriedAt": "2026-11-26T07:58:58.682294281Z",
+            "source": "模拟POS快照"
+          }
+        ],
+        "citations": [],
+        "quantity": 2,
+        "totals": {
+          "DEMO-003": 212
+        },
+        "trace": [
+          "本店原品牌检索 · 1 款",
+          "原款库存核验 · 同款最多 1 包",
+          "本店商品检索 · 4 款候选",
+          "选择核验顺序 · 活动核验优先",
+          "活动核验 · 无适用活动",
+          "价格核验 · 4 款中有 4 款通过",
+          "库存核验 · 4 款中有 3 款通过",
+          "完成 · 复核购买数量及预算"
+        ],
+        "quotes": {
+          "DEMO-003": {
+            "name": "芽禾 纸尿裤 L 码 52 片",
+            "regularTotal": 212,
+            "activity": null,
+            "discount": 0,
+            "payable": 212,
+            "meetsBudget": true
+          }
+        },
+        "policyText": null,
+        "reviewDraft": null
+      },
+      "passed": true
+    },
+    {
+      "question": "要两包 L 码纸尿裤，绒朵缺货，只能换尺码，总共220元",
+      "expectedSkus": [],
+      "expectedTotals": {},
+      "expectedType": "clarify",
+      "reply": {
+        "type": "clarify",
+        "text": "当前整单替代支持同尺码换款。若要查询其他尺码，请指定尺码和原品牌。",
+        "products": [],
+        "citations": [],
+        "quantity": null,
+        "totals": {},
+        "trace": [],
+        "quotes": {},
+        "policyText": null,
+        "reviewDraft": null
+      },
+      "passed": true
+    }
+  ]
+}

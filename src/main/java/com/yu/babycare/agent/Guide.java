@@ -212,7 +212,8 @@ public class Guide {
         // 合并历史条件与本轮槽位；即使后面追问，也要把部分条件带下去。/ Merge history with this turn's slots and carry partial conditions into clarifications.
         boolean review = plan.intent() == LanguageModel.Intent.REVIEW;
         var conditions = review ? previous : merge(previous,plan,question);
-        var reference = reference(question,plan.reference(),mentioned);
+        var reference = reference(question,plan.reference(),mentioned,
+            context.displayedSkus().isEmpty() && plan.brandChoice()!=null && plan.category()!=null && plan.size()!=null);
         String selected = previous.selectedSku();
         if (reference != null) {
             switch (reference.kind()) {
@@ -245,6 +246,15 @@ public class Guide {
             return new Result(previous.select(selected),Reply.message("review_draft","请核对复核草稿，确认后提交给本店售后。"));
         }
         var filter = selected == null ? conditions : conditions.select(selected);
+        if (selected!=null && (plan.brandChoice()!=null || previous.brandChoice()!=null) && !review) {
+            // Resolve a displayed replacement through this store's catalog before narrowing a follow-up.
+            var row = catalog.listedProduct(store,selected);
+            if (row.isEmpty() || (!mentioned.isEmpty() && !mentioned.contains(row.get().brand())))
+                return clarifySelection(previous,context.displayedSkus().size(),false);
+            var item = row.get();
+            filter = new Filter(item.category(),item.size(),filter.budget(),true,Set.of(item.brand()),filter.excluded(),
+                filter.quantity(),filter.totalBudget(),filter.pendingBudget(),filter.promotions(),selected,plan.brandChoice());
+        }
         if (stockMode.isPaused(store.id())) return manualStock(filter);
         var unresolved = new LinkedHashSet<>(mentioned);
         unresolved.removeAll(filter.brands());
@@ -254,6 +264,8 @@ public class Guide {
         if (!unresolved.isEmpty())
             return new Result(filter,Reply.message("clarify","请确认要查询还是排除品牌“" + String.join("、",unresolved) + "”？"));
         // 金额语义不明（每包上限还是总预算）时先问清，绝不猜测。/ Ambiguous cap (per-pack limit vs total budget) is asked, never guessed.
+        if (filter.brandChoice()==Catalog.BrandChoice.SIZE_ONLY)
+            return new Result(filter,Reply.message("clarify","当前整单替代支持同尺码换款。若要查询其他尺码，请指定尺码和原品牌。"));
         if (filter.pendingBudget()!=null)
             return new Result(filter,Reply.message("clarify",filter.pendingBudget()+" 元是每包上限，还是购买这些商品的总预算？"));
         // 有总预算却不知道买几包，无法核算。/ A total budget without a pack count cannot be verified.
@@ -267,6 +279,11 @@ public class Guide {
         // 透气性等卖点常不在已审核资料里，回答时统一附上缺失说明。/ Attributes like breathability are often absent from approved data, so answers note the gap.
         String missing = question.contains("透气") ? "透气性" : plan.missingField();
         try {
+            if (filter.brandChoice()!=null) {
+                if (filter.category()==null || filter.size()==null || filter.brands().isEmpty() || filter.quantity()==null)
+                    return new Result(filter,Reply.message("clarify","请补充原商品的品类、尺码、品牌和所需包数，以便核验整单库存。"));
+                return purchases.checkOriginal(store,filter);
+            }
             if (filter.quantity()!=null) {
                 // 已知包数：先做价格/库存核验，再给出可购买结论。/ With a known pack count, verify price and stock before claiming availability.
                 var reply = purchases.run(store, filter);
@@ -292,7 +309,7 @@ public class Guide {
     }
 
     // Check explicit ordinals against the wording even if the model drops or changes the position.
-    private static LanguageModel.Reference reference(String question, LanguageModel.Reference parsed, Set<String> brands) {
+    private static LanguageModel.Reference reference(String question, LanguageModel.Reference parsed, Set<String> brands, boolean namedStockoutRequest) {
         var match = POSITION.matcher(question);
         if (match.find()) {
             String number = java.text.Normalizer.normalize(match.group(1), java.text.Normalizer.Form.NFKC);
@@ -311,6 +328,8 @@ public class Guide {
         if (question.contains("换一批")) return new LanguageModel.Reference(LanguageModel.ReferenceKind.NEW_LIST,null);
         if (brands.isEmpty() && (question.contains("这款") || question.contains("这一款")))
             return new LanguageModel.Reference(LanguageModel.ReferenceKind.CURRENT,null);
+        // A first-turn purchase can name the product directly. Pack counts do not identify list positions.
+        if (namedStockoutRequest && !brands.isEmpty()) return null;
         return parsed != null && parsed.kind() != null ? parsed : null;
     }
 
@@ -450,13 +469,18 @@ public class Guide {
         if (promotions==null && quantity!=null && List.of("多少钱","多少元","实付","到手价","一共多少").stream().anyMatch(question::contains)
                 && List.of("原价","普通价","不算活动","不算优惠").stream().noneMatch(question::contains))
             promotions = true;
+        var brandChoice = p.brandChoice();
+        boolean newSelection = clear.contains("brands") || (p.brands()!=null && !p.brands().equals(old.brands()))
+            || (p.reference()!=null && p.reference().kind()==LanguageModel.ReferenceKind.NEW_LIST);
+        boolean suppliedSize = old.brandChoice()==Catalog.BrandChoice.SIZE_ONLY && p.size()!=null;
+        if (brandChoice==null && !newSelection && !suppliedSize) brandChoice = old.brandChoice();
         return new Filter(value(p.category(),old.category(),clear.contains("category")),
             value(p.size(),old.size(),clear.contains("size")),unit,
             // inStock 未给出则继承；显式 clear 时回到 false。/ Inherit unless explicitly cleared, then default to false.
             p.inStock()!=null ? p.inStock() : old.inStock() && !clear.contains("inStock"),
             // 品牌集合同理：本轮优先，clear 置空，否则继承。/ Brands: this turn wins, clear empties them, otherwise inherit.
             p.brands()!=null ? p.brands() : clear.contains("brands") ? Set.of() : old.brands(), Set.copyOf(excluded),
-            quantity,total,pending,promotions);
+            quantity,total,pending,promotions,null,brandChoice);
     }
 
     /**

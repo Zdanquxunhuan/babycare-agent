@@ -1,6 +1,7 @@
 package com.yu.babycare;
 
 import com.yu.babycare.agent.*;
+import com.yu.babycare.catalog.Catalog.BrandChoice;
 import com.yu.babycare.agent.LanguageModel.*;
 import com.yu.babycare.knowledge.Knowledge.Evidence;
 import java.math.BigDecimal;
@@ -116,6 +117,27 @@ class GuideAcceptanceTests {
         offer.remove("available_packs");
         Files.writeString(file,json.writeValueAsString(snapshot));
         assertEquals("stock_unavailable",ask(question).path("type").asString());
+    }
+
+    @Test void shortageKeepsBrandUntilCustomerAllowsAlternatives() throws Exception {
+        login("direct");
+        var strict = new Plan(Intent.PRODUCT,null,"纸尿裤","L",null,null,Set.of("绒朵"),null,null,
+            null,null,4,BigDecimal.valueOf(450),Scope.TOTAL,null,new Reference(ReferenceKind.CURRENT,null),null,
+            BrandChoice.REQUIRE_ORIGINAL);
+        var flexible = new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null,null,null,null,
+            null,null,null,BrandChoice.ALLOW_ALTERNATIVE);
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(strict,flexible,
+            new Plan(Intent.PRODUCT,null,null,null,null,null,null,null,null,null,null));
+        when(model.firstCheck(any(),anyInt(),anyLong())).thenReturn(Check.STOCK);
+        var refused = ask("只能要绒朵 L 码纸尿裤，四包总共不超过450元");
+        assertEquals("empty",refused.path("type").asString());
+        assertTrue(refused.path("text").asString().contains("还差 1 包"));
+        verify(model,never()).firstCheck(any(),anyInt(),anyLong());
+        var replaced = ask("可以换牌子");
+        assertEquals(1,replaced.path("products").size());
+        assertEquals(424,replaced.path("totals").path("DEMO-003").asInt());
+        assertTrue(replaced.path("trace").toString().contains("原款库存核验"));
+        assertEquals(424,ask("第一款呢").path("totals").path("DEMO-003").asInt());
     }
 
     @Test void sessionsAndScopedOffers() throws Exception {

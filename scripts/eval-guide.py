@@ -117,9 +117,44 @@ def evaluate(url,password,model):
 EXPECTED = ["模拟售后政策","1","模拟售后政策 / 第4条 已拆包","拆包商品需提供批次与照片，由售后专员复核后答复。"]
 
 
+def evaluate_stockout(url, password, model):
+    guide = Session(url, "direct", password)
+    base = "要两包 L 码纸尿裤，"
+    cases = [
+        ("最好绒朵，其他牌子也行，总共220元", ["DEMO-003"]),
+        ("只能要绒朵，总共220元", []),
+        ("绒朵缺货可以换牌子，总共220元", ["DEMO-003"]),
+        ("绒朵缺货可以换牌子，每包220元", ["DEMO-003", "DEMO-013", "DEMO-018"]),
+        ("绒朵缺货，可以换牌子，总共220元", ["DEMO-003"]),
+        ("绒朵缺货，只能换尺码，总共220元", []),
+    ]
+    rows = []
+    for wording, expected in cases:
+        question = base + wording
+        chat = guide.call("/api/conversations", {})
+        chat = guide.call("/api/conversations/"+chat["id"]+"/messages",
+            dict(text=question, messageId=str(uuid.uuid4()), version=chat["version"]))
+        reply = chat["turns"][-1]["reply"]
+        actual = sorted(p["sku"] for p in reply["products"])
+        totals = {sku: {"DEMO-003":212, "DEMO-013":264, "DEMO-018":290}[sku] for sku in expected}
+        trace = reply["trace"]
+        status = "products" if expected else ("clarify" if "尺码" in wording else "empty")
+        checked = any("原款库存核验" in t for t in trace)
+        searched = any("本店商品检索" in t for t in trace)
+        passed = (actual == expected and totals == reply["totals"] and status == reply["type"]
+                  and searched == bool(expected) and checked == (status != "clarify"))
+        rows.append(dict(question=question, expectedSkus=expected, expectedTotals=totals,
+            expectedType=status, reply=reply, passed=passed))
+    path = REPORT.with_name("stockout-eval.json")
+    path.write_text(json.dumps(dict(model=model, cases=rows), ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"{sum(row['passed'] for row in rows)}/{len(rows)}: {path}")
+    return all(row["passed"] for row in rows)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jar",type=Path,help="use an already built application JAR")
+    parser.add_argument("--stockout", action="store_true", help="run six paired shortage scenarios")
     args = parser.parse_args()
     if not os.environ.get("DASHSCOPE_API_KEY"):
         parser.error("Set DASHSCOPE_API_KEY for real Bailian calls.")
@@ -134,6 +169,13 @@ def main():
     with tempfile.TemporaryDirectory() as folder:
         fixtures = Path(folder)/"fixtures"
         shutil.copytree(ROOT/"fixtures",fixtures)
+        if args.stockout:
+            path = fixtures/"catalog-demo.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            product = next(p for p in data["products"] if p["sku"] == "DEMO-008")
+            offer = next(o for o in product["store_offers"] if o["store_id"] == "STORE-01")
+            offer["available_packs"] = 1
+            path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         promo = fixtures/"promotion-demo.json"
         rule = json.loads(promo.read_text(encoding="utf-8"))
         rule.update(startsOn="2000-01-01",endsOn="2099-12-31")
@@ -150,7 +192,8 @@ def main():
                 for _ in range(120):
                     found = re.search(r"Tomcat started on port (\d+)",logfile.read_text(encoding="utf-8",errors="replace"))
                     if found:
-                        return evaluate("http://127.0.0.1:"+found[1],password,model)
+                        evaluate_suite = evaluate_stockout if args.stockout else evaluate
+                        return evaluate_suite("http://127.0.0.1:"+found[1],password,model)
                     if server.poll() is not None:
                         raise RuntimeError("Isolated evaluation server exited during startup")
                     time.sleep(0.5)

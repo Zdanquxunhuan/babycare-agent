@@ -51,16 +51,18 @@ public class Conversations {
      *                current turn count, echoed back as {@link Input#version()} on the next submit
      * @param turns   已过滤掉失效引用的轮次 / turns whose expired citations have been redacted
      */
-    public record View(UUID id, int version, List<Turn> turns) {}
+    public record View(UUID id, int version, List<Turn> turns,List<AftersalesReviews.Ticket> reviews) {}
 
     private static final Logger log = LoggerFactory.getLogger(Conversations.class);
 
     private final Checkpoints checkpoints;
+    private final AftersalesReviews reviews;
     private final Guide guide;
     private final Policies policies;
     private final Knowledge knowledge;
 
-    public Conversations(Checkpoints checkpoints, Guide guide, Policies policies, Knowledge knowledge) {
+    public Conversations(Checkpoints checkpoints, Guide guide, Policies policies, Knowledge knowledge, AftersalesReviews reviews) {
+        this.reviews = reviews;
         this.checkpoints = checkpoints;
         this.guide = guide;
         this.policies = policies;
@@ -91,7 +93,7 @@ public class Conversations {
             return new Turn(turn.messageId(),turn.question(),
                 new Guide.Reply("no_evidence","原引用资料已失效，请重新提问。",List.of(),List.of(),null,Map.of(),List.of()));
         }).toList();
-        return new View(chat.id(),chat.version(),visible);
+        return new View(chat.id(),chat.version(),visible,reviews.forChat(chat.id(),store.id()));
     }
 
     @PostMapping
@@ -122,6 +124,8 @@ public class Conversations {
             long start = System.nanoTime();
             try (var correlation = org.slf4j.MDC.putCloseable("messageId", input.messageId().toString())) {
                 var result = guide.answer(input.text(),owner.store(),claim.context());
+                if ("review_draft".equals(result.reply().type()))
+                    result = reviews.prepare(result,checkpoints.read(owner,id),input.text(),owner.store().id());
                 checkpoints.finish(checkpoints.owner(auth),id,input,claim,result);
                 log.info("turn={} chat={} guide={} store={} result={} durationMs={} evidence={}",
                     input.messageId(),id,owner.guide(),owner.store().id(),

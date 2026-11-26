@@ -68,3 +68,20 @@ CREATE TABLE IF NOT EXISTS bc_stock_mode_change (
   changed_at BIGINT NOT NULL,
   PRIMARY KEY (store_id, revision)
 );
+
+-- Submitted cases survive checkpoint expiry. Drafts live only in their originating chat turn.
+CREATE TABLE IF NOT EXISTS bc_aftersales_review (
+  case_id VARCHAR(36) PRIMARY KEY,
+  chat_id VARCHAR(36) NOT NULL,
+  draft_message VARCHAR(36) NOT NULL,
+  store_id VARCHAR(32) NOT NULL,
+  guide_name VARCHAR(80) NOT NULL,
+  draft_json TEXT NOT NULL,
+  evidence_json TEXT,
+  submitted_at BIGINT NOT NULL,
+  answer TEXT,
+  answered_by VARCHAR(80),
+  answered_at BIGINT,
+  UNIQUE (chat_id,draft_message)
+);
+CREATE INDEX IF NOT EXISTS bc_review_store_time ON bc_aftersales_review(store_id,submitted_at);

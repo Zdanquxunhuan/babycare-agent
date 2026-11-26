@@ -51,16 +51,43 @@ const { randomUUID } = require('node:crypto');
         assert.match(await reply.locator('table').innerText(),/绒朵[\s\S]*3 包[\s\S]*合计 218 元/);
         assert.match(await reply.innerText(),/售后政策：.*批次与照片/);
         assert.match(await reply.locator('a').innerText(),/第4条 已拆包.*v2/);
+        if (process.argv.includes('--review')) {
+          const draft = await ask('帮我把第二款的拆包问题交给售后');
+          assert.match(await draft.innerText(),/绒朵.*DEMO-008/);
+          assert.match(await draft.innerText(),/当时报价：2 包，共 218 元/);
+          assert.match(await draft.locator('a').innerText(),/第4条 已拆包.*v2/);
+          const confirm = draft.getByRole('button',{name:'提交复核',exact:true});
+          const saved = guide.waitForResponse(r => r.url().endsWith('/review'));
+          await confirm.click();
+          const ticket = await (await saved).json();
+          await draft.getByText(/待答复/).waitFor();
+          const reviewer = await browser.newPage();
+          await login(reviewer,'direct-reviewer',process.env.BABYCARE_DIRECT_REVIEW_PASSWORD);
+          const caseRow = reviewer.locator('#review-queue article').filter({hasText:ticket.id});
+          await caseRow.getByLabel('复核答复').fill('请补充包装批次和照片。');
+          await caseRow.getByRole('button',{name:'提交答复'}).click();
+          await reviewer.getByText('答复已返回导购会话',{exact:true}).waitFor();
+          await guide.reload();
+          await guide.locator('#history article').last().getByText('本店售后：请补充包装批次和照片。',{exact:true}).waitFor();
+        }
       } finally {
         await second.getByRole('button',{name:'下线'}).click();
         await ops.getByText('资料已下线',{exact:true}).waitFor();
       }
       await guide.reload();
-      const historical = guide.locator('#history article').last();
+      const historical = guide.locator('#history article').nth(1);
       await historical.getByText(/当前缺少有效条款/).waitFor();
       assert.match(await historical.locator('table').innerText(),/合计 218 元/);
       assert.equal(await historical.locator('a').count(),0);
       assert.doesNotMatch(await historical.innerText(),/批次与照片/);
+      if (process.argv.includes('--review')) {
+        const review = guide.locator('#history article').last();
+        assert.equal(await review.locator('a').count(),0);
+        assert.match(await review.innerText(),/已答复/);
+        await guide.getByRole('button',{name:'我的复核单'}).click();
+        const mine = guide.locator('#my-cases article').filter({hasText:'请补充包装批次和照片。'}).first();
+        await mine.getByText('当前缺少有效条款，需人工确认。',{exact:true}).waitFor();
+      }
       return;
     }
     if (process.argv.includes('--invoice-only')) {

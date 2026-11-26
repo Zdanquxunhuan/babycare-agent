@@ -30,6 +30,13 @@ public class StoreSecurity {
         "direct", new Store("STORE-01", "模拟直营店"),
         "franchise", new Store("STORE-02", "模拟加盟店"));
 
+    private static final Map<String,String> REVIEW_STORES = Map.of(
+        "direct-reviewer","direct", "franchise-reviewer","franchise");
+
+    public static Store reviewerStore(Authentication auth) {
+        return STORES.get(REVIEW_STORES.getOrDefault(auth.getName(),""));
+    }
+
     // Explicit identifiers for the two demo stores. Semantic references are handled by the planner.
     private static final Map<String, Pattern> STORE_MENTIONS = Map.of(
         "STORE-01", Pattern.compile("直营店|(?<![A-Z0-9])(?:A\\s*店|STORE-01(?![A-Z0-9]))", Pattern.CASE_INSENSITIVE),
@@ -51,6 +58,7 @@ public class StoreSecurity {
         if (auth == null || !auth.isAuthenticated()
                 || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals(role))) return false;
         if ("ROLE_GUIDE".equals(role) && store(auth) == null) return false;
+        if ("ROLE_REVIEWER".equals(role) && reviewerStore(auth) == null) return false;
         try {
             var user = accounts.loadUserByUsername(auth.getName());
             return user.isEnabled() && user.isAccountNonLocked() && user.isAccountNonExpired()
@@ -70,7 +78,9 @@ public class StoreSecurity {
 
     @Bean
     static InMemoryUserDetailsManager accounts(@Value("${babycare.demo-password}") String password,
-            @Value("${babycare.ops-password:}") String opsPassword) {
+            @Value("${babycare.ops-password:}") String opsPassword,
+            @Value("${BABYCARE_DIRECT_REVIEW_PASSWORD:}") String directReviewPassword,
+            @Value("${BABYCARE_FRANCHISE_REVIEW_PASSWORD:}") String franchiseReviewPassword) {
         var encoder = new BCryptPasswordEncoder();
         var users = STORES.keySet().stream().map(name -> User.withUsername(name)
             .password("{bcrypt}" + encoder.encode(password)).roles("GUIDE").build()).toList();
@@ -79,6 +89,10 @@ public class StoreSecurity {
             manager.createUser(User.withUsername("ops").password("{bcrypt}" + encoder.encode(opsPassword))
                 .roles("OPS").build());
         }
+        Map.of("direct-reviewer",directReviewPassword,"franchise-reviewer",franchiseReviewPassword).forEach((name,secret) -> {
+            if (!secret.isBlank()) manager.createUser(User.withUsername(name)
+                .password("{bcrypt}" + encoder.encode(secret)).roles("REVIEWER").build());
+        });
         return manager;
     }
 
@@ -86,6 +100,8 @@ public class StoreSecurity {
     SecurityFilterChain security(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests(rules -> rules
                 .requestMatchers("/", "/index.html", "/app.js", "/style.css", "/api/session", "/error").permitAll()
+                .requestMatchers("/api/reviewer/**").access((auth, context) ->
+                    new AuthorizationDecision(hasCurrentRole(auth.get(), "ROLE_REVIEWER")))
                 .requestMatchers("/api/ops/**").access((auth, context) ->
                     new AuthorizationDecision(hasCurrentRole(auth.get(), "ROLE_OPS")))
                 .requestMatchers("/api/**").access((auth, context) ->
@@ -105,6 +121,7 @@ public class StoreSecurity {
     public Map<String, Object> session(Authentication auth, CsrfToken csrf) {
         if (auth == null) return Map.of("authenticated", false, "csrf", csrf.getToken());
         if (hasCurrentRole(auth, "ROLE_OPS")) return Map.of("authenticated", true, "role", "OPS", "csrf", csrf.getToken());
+        if (hasCurrentRole(auth, "ROLE_REVIEWER")) return Map.of("authenticated",true,"role","REVIEWER","store",reviewerStore(auth),"csrf",csrf.getToken());
         if (!hasCurrentRole(auth, "ROLE_GUIDE")) return Map.of("authenticated", false, "csrf", csrf.getToken());
         return Map.of("authenticated", true, "role", "GUIDE", "store", store(auth), "csrf", csrf.getToken());
     }

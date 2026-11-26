@@ -29,7 +29,8 @@ import tools.jackson.databind.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties={"babycare.demo-password=guide-test","babycare.ops-password=ops-test"})
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties={"babycare.demo-password=guide-test","babycare.ops-password=ops-test",
+    "BABYCARE_DIRECT_REVIEW_PASSWORD=direct-review-test","BABYCARE_FRANCHISE_REVIEW_PASSWORD=franchise-review-test"})
 class GuideAcceptanceTests {
     @TestBean Clock storeClock;
     static Clock storeClock() {
@@ -269,6 +270,7 @@ class GuideAcceptanceTests {
         var runner = new ProcessBuilder(command).inheritIO();
         runner.environment().put("BABYCARE_URL","http://127.0.0.1:"+port);
         runner.environment().put("BABYCARE_DEMO_PASSWORD","guide-test");
+        runner.environment().put("BABYCARE_DIRECT_REVIEW_PASSWORD","direct-review-test");
         runner.environment().put("BABYCARE_OPS_PASSWORD","ops-test");
         runner.environment().put("BABYCARE_PROMOTION_FAULT_FILE",dir.resolve("promotions-offline").toString());
         runner.environment().put("BABYCARE_STOCK_FAULT_FILE",dir.resolve("offline").toString());
@@ -394,6 +396,72 @@ class GuideAcceptanceTests {
     void quoteAndPolicyInBrowser() throws Exception {
         stubQuoteAndPolicy();
         runBrowser("policy-acceptance.cjs","--quote-policy");
+    }
+
+    private static final String HANDOFF = "帮我把第二款的拆包问题交给售后";
+
+    private void stubReview() {
+        stubQuoteAndPolicy();
+        when(model.interpret(eq(HANDOFF),eq("STORE-01"),any(),anySet()))
+            .thenReturn(plan(Intent.REVIEW,null,null,null,null));
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named="BABYCARE_BROWSER_TEST",matches="1")
+    void humanReviewInBrowser() throws Exception {
+        stubReview();
+        runBrowser("policy-acceptance.cjs","--quote-policy","--review");
+    }
+
+    @Test void humanReviewIsConfirmedOnceAndScopedToStore() throws Exception {
+        login("direct");
+        stubReview();
+        assertEquals("clarify",ask(HANDOFF).path("type").asString());
+        ask("本店有哪些 L 码纸尿裤？只看芽禾和绒朵。");
+        ask("第二款买两包，今天有活动吗？如果拆了一包还能退吗？");
+        var draft = ask(HANDOFF);
+        assertEquals("review_draft",draft.path("type").asString());
+        assertEquals("DEMO-008",draft.path("reviewDraft").path("sku").asString());
+        assertEquals(218,draft.path("reviewDraft").path("quotedTotal").asInt());
+        String source = "/api/conversations/"+chat;
+        var view = ok(request("GET",source,null,null));
+        assertEquals(0,view.path("reviews").size());
+        String prefix = source+"/messages/";
+        String confirm = prefix+view.path("turns").path(3).path("messageId").asString()+"/review";
+        assertEquals(400,request("POST",prefix+view.path("turns").path(1).path("messageId").asString()+"/review",
+            "application/json","{}").statusCode());
+        assertEquals(409,request("POST",confirm,"application/json","{\"evidenceId\":\"stale\"}").statusCode());
+        String id;
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            Callable<String> submit = () -> ok(request("POST",confirm,"application/json","{}")).path("id").asString();
+            var first = pool.submit(submit);
+            var second = pool.submit(submit);
+            id = first.get();
+            assertEquals(id,second.get());
+        }
+        assertEquals(1,ok(request("GET",source,null,null)).path("reviews").size());
+        String answerPath = "/api/reviewer/requests/"+id+"/answer";
+        String body = json.writeValueAsString(Map.of("answer","请补充包装批次和照片"));
+        assertEquals(403,request("POST",answerPath,"application/json",body).statusCode());
+        authenticate("franchise","guide-test");
+        assertEquals(404,request("GET",source,null,null).statusCode());
+        assertEquals(404,request("POST",confirm,"application/json","{}").statusCode());
+        assertFalse(ok(request("GET","/api/my-reviews",null,null)).toString().contains(id));
+        authenticate("franchise-reviewer","franchise-review-test");
+        assertFalse(ok(request("GET","/api/reviewer/requests",null,null)).toString().contains(id));
+        assertEquals(404,request("POST",answerPath,"application/json",body).statusCode());
+        authenticate("direct-reviewer","direct-review-test");
+        assertTrue(ok(request("GET","/api/reviewer/requests",null,null)).toString().contains(id));
+        assertEquals(204,request("POST",answerPath,"application/json",body).statusCode());
+        assertEquals(204,request("POST",answerPath,"application/json",body).statusCode());
+        assertEquals(409,request("POST",answerPath,"application/json","{\"answer\":\"改答\"}").statusCode());
+        assertFalse(ok(request("GET","/api/reviewer/requests",null,null)).toString().contains(id));
+        authenticate("direct","guide-test");
+        var completed = ok(request("GET",source,null,null)).path("reviews").path(0);
+        assertEquals("ANSWERED",completed.path("status").asString());
+        assertEquals("请补充包装批次和照片",completed.path("answer").asString());
+        ok(request("POST","/api/conversations",null,null));
+        assertTrue(ok(request("GET","/api/my-reviews",null,null)).toString().contains(id));
     }
 
     @Test void quoteAndPolicyAreVerifiedIndependently() throws Exception {

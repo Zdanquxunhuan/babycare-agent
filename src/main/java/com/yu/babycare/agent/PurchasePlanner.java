@@ -49,7 +49,6 @@ public class PurchasePlanner {
         boolean first = true;
         boolean activityUnavailable = false;
         Optional<Promotions.Rule> rule = Optional.empty();
-        Map<String,BigDecimal> verifiedPrices = new HashMap<>();
         List<Offer> inStock = List.of();
         List<Offer> rows = List.of();
         while (!remaining.isEmpty()) {
@@ -100,7 +99,6 @@ public class PurchasePlanner {
                 inStock = rows;
             } else if (checkActivity) {
                 // A regular total over budget may still qualify after the promotion check.
-                checked.forEach(row -> verifiedPrices.put(row.sku(),row.price()));
                 rows = checked;
             } else {
                 rows = checked.stream().filter(row -> within(row.price(),filter.budget())
@@ -112,15 +110,19 @@ public class PurchasePlanner {
                 if (next==Check.STOCK) {
                     int maximum = checked.stream().mapToInt(Offer::packs).max().orElse(0);
                     reason = "需要同款 " + filter.quantity() + " 包，候选商品最多仅有 " + maximum + " 包库存。";
+                    if (!checkActivity && checked.size()==1)
+                        reason += "按普通价计，这些商品合计 " + total(checked.getFirst(),filter.quantity()).toPlainString() + " 元。";
                 }
                 return stop("empty", reason + "要调整条件吗？", trace);
             }
             candidates = rows.stream().map(Offer::sku).toList();
         }
-        if (checkActivity) return promotionReply(filter,inStock,verifiedPrices,rule,activityUnavailable,trace);
+        if (checkActivity) return promotionReply(filter,inStock,rule,activityUnavailable,trace);
         // A later price check must not replace a freshly verified quantity with the startup snapshot.
         var eligibleSkus = Set.copyOf(candidates);
-        rows = inStock.stream().filter(row -> eligibleSkus.contains(row.sku())).toList();
+        rows = inStock.stream().filter(row -> eligibleSkus.contains(row.sku()) && within(row.price(),filter.budget())
+            && within(total(row,filter.quantity()),filter.totalBudget())).toList();
+        if (rows.isEmpty()) return stop("empty","候选商品的价格超出当前预算。",trace);
         Map<String,BigDecimal> totals = new LinkedHashMap<>();
         for (Offer row : rows) totals.put(row.sku(), total(row,filter.quantity()));
         trace.add("完成 · 已核实购买数量及合计");
@@ -128,14 +130,13 @@ public class PurchasePlanner {
             + filter.quantity() + " 包购买。", rows,List.of(),filter.quantity(),totals,trace);
     }
 
-    private static Guide.Reply promotionReply(Filter filter, List<Offer> inStock, Map<String,BigDecimal> prices,
+    private static Guide.Reply promotionReply(Filter filter, List<Offer> inStock,
                                               Optional<Promotions.Rule> rule, boolean unavailable, List<String> trace) {
         List<Offer> matches = new ArrayList<>();
         Map<String,BigDecimal> totals = new LinkedHashMap<>();
         Map<String,Quote> quotes = new LinkedHashMap<>();
         for (Offer row : inStock) {
-            BigDecimal price = prices.get(row.sku());
-            if (price == null) continue;
+            BigDecimal price = row.price();
             BigDecimal quantity = BigDecimal.valueOf(filter.quantity());
             BigDecimal regular = price.multiply(quantity);
             var applicable = rule.filter(r -> r.sku().equals(row.sku()));
@@ -144,8 +145,7 @@ public class PurchasePlanner {
             boolean fits = within(payable,filter.totalBudget())
                 && (filter.budget()==null || payable.compareTo(filter.budget().multiply(quantity))<=0);
             if (fits) {
-                matches.add(new Offer(row.sku(),row.name(),row.brand(),row.category(),row.size(),row.pieces(),
-                    price,row.packs(),row.snapshot(),row.queriedAt()));
+                matches.add(row);
                 totals.put(row.sku(),payable);
             }
             if (fits || unavailable) {

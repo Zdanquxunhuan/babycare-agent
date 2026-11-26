@@ -90,6 +90,34 @@ class GuideAcceptanceTests {
         return new Plan(intent,null,"纸尿裤",size,budget==null?null:BigDecimal.valueOf(budget),
             true,brands,excluded,null,null,null);
     }
+    @Test void guideReadsRegularPriceAndDirectSellablePacksFromPos() throws Exception {
+        login("direct");
+        var purchase = new Plan(Intent.PRODUCT,null,"纸尿裤","L",null,null,Set.of("绒朵"),null,null,
+            null,null,2,null,null,false);
+        when(model.interpret(anyString(),anyString(),any(),anySet())).thenReturn(purchase);
+        Path file = dir.resolve("stock.json");
+        var snapshot = json.readTree(Files.readString(file));
+        var product = snapshot.path("products").valueStream().filter(p -> "DEMO-008".equals(p.path("sku").asString()))
+            .findFirst().orElseThrow();
+        var offer = (tools.jackson.databind.node.ObjectNode)product.path("store_offers").valueStream()
+            .filter(o -> "STORE-01".equals(o.path("store_id").asString())).findFirst().orElseThrow();
+        offer.put("price_cny",new BigDecimal("118.50"));
+        Files.writeString(file,json.writeValueAsString(snapshot));
+        String question = "本店绒朵 L 码两包够吗，按普通价一共多少？";
+        var reply = ask(question);
+        assertEquals(237,reply.path("totals").path("DEMO-008").asInt());
+        assertEquals(3,reply.path("products").path(0).path("packs").asInt());
+        assertEquals("模拟POS快照",reply.path("products").path(0).path("source").asString());
+        offer.put("available_packs",0);
+        Files.writeString(file,json.writeValueAsString(snapshot));
+        var empty = ask(question);
+        assertEquals("empty",empty.path("type").asString());
+        assertTrue(empty.path("text").asString().contains("0 包库存"));
+        offer.remove("available_packs");
+        Files.writeString(file,json.writeValueAsString(snapshot));
+        assertEquals("stock_unavailable",ask(question).path("type").asString());
+    }
+
     @Test void sessionsAndScopedOffers() throws Exception {
         assertEquals(401, request("GET","/api/stores/STORE-01/offers/DEMO-008",null,null).statusCode());
         login("direct");

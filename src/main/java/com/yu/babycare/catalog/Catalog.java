@@ -20,7 +20,12 @@ public class Catalog {
     record Fixture(boolean simulated, String description, String snapshot_date, List<StoreSecurity.Store> stores,
                    List<Product> products) {}
     public record Offer(String sku, String name, String brand, String category, String size, int pieces,
-                        BigDecimal price, int packs, String snapshot, Instant queriedAt) {}
+                        BigDecimal price, int packs, String snapshot, Instant queriedAt, String source) {
+        public Offer(String sku,String name,String brand,String category,String size,int pieces,
+                     BigDecimal price,int packs,String snapshot,Instant queriedAt) {
+            this(sku,name,brand,category,size,pieces,price,packs,snapshot,queriedAt,null);
+        }
+    }
     public record Filter(String category, String size, BigDecimal budget, boolean inStock,
                          Set<String> brands, Set<String> excluded, Integer quantity, BigDecimal totalBudget,
                          BigDecimal pendingBudget, Boolean promotions, String selectedSku) {
@@ -89,7 +94,7 @@ public class Catalog {
 
     public List<Offer> check(StoreSecurity.Store store, Collection<String> candidates, boolean needsStock, long remainingMs) {
         var rows = scopedRows(store, store.id()).stream().filter(row -> candidates.contains(row.sku())).toList();
-        return needsStock ? stock.lookup(store.id(), rows, remainingMs) : rows;
+        return stock.lookup(store.id(),rows,remainingMs);
     }
 
     public List<Offer> query(StoreSecurity.Store identity, String requestedStore, Filter filter) {
@@ -102,8 +107,9 @@ public class Catalog {
 
     @GetMapping("/api/stores/{storeId}/offers/{skuId}")
     public Offer offer(Authentication auth, @PathVariable String storeId, @PathVariable String skuId) {
-        return query(StoreSecurity.store(auth), storeId, Filter.empty()).stream()
-            .filter(row -> row.sku().equals(skuId)).findFirst()
+        var store = StoreSecurity.store(auth);
+        if (!store.id().equals(storeId)) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        return check(store,List.of(skuId),true,Long.MAX_VALUE).stream().findFirst()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 }

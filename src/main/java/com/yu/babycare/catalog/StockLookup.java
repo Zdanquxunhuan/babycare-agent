@@ -1,6 +1,5 @@
 package com.yu.babycare.catalog;
 
-import com.yu.babycare.catalog.Catalog.Fixture;
 import com.yu.babycare.catalog.Catalog.Offer;
 import jakarta.annotation.PreDestroy;
 import java.nio.file.Files;
@@ -16,7 +15,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import tools.jackson.databind.ObjectMapper;
 
 /** Reads the simulated stock source under a deadline, including the source I/O itself. */
 @RestController
@@ -27,8 +25,7 @@ public class StockLookup {
                         long elapsedMs, long timeoutMs) {}
 
     private final StoreStockMode mode;
-    private final ObjectMapper mapper;
-    private final Path source;
+    private final PosReader pos;
     private final Path offlineFlag;
     private final Path slowFlag;
     private final Duration simulatedDelay;
@@ -38,15 +35,13 @@ public class StockLookup {
         new SynchronousQueue<>(), Thread.ofPlatform().daemon().name("stock-lookup-", 0).factory());
     private final Deque<Alert> alerts = new ArrayDeque<>();
 
-    public StockLookup(ObjectMapper mapper, StoreStockMode mode,
-            @Value("${babycare.stock-source}") Path source,
+    public StockLookup(PosReader pos, StoreStockMode mode,
             @Value("${babycare.stock-fault-file:}") String offlineFlag,
             @Value("${babycare.stock-delay-file}") String slowFlag,
             @Value("${babycare.stock-simulated-delay}") Duration simulatedDelay,
             @Value("${babycare.stock-timeout}") Duration timeout) {
         this.mode = mode;
-        this.mapper = mapper;
-        this.source = source;
+        this.pos = pos;
         this.offlineFlag = offlineFlag.isBlank() ? null : Path.of(offlineFlag);
         this.slowFlag = slowFlag.isBlank() ? null : Path.of(slowFlag);
         this.simulatedDelay = simulatedDelay;
@@ -85,24 +80,14 @@ public class StockLookup {
     private List<Offer> read(String store, List<Offer> candidates) throws java.io.IOException, InterruptedException {
         if (offlineFlag != null && Files.exists(offlineFlag)) throw new java.io.IOException("库存离线");
         if (slowFlag != null && Files.exists(slowFlag)) Thread.sleep(simulatedDelay);
-        Map<String,Integer> packs = new HashMap<>();
-        try (var input = Files.newInputStream(source)) {
-            var snapshot = mapper.readValue(input, Fixture.class);
-            for (var product : snapshot.products()) {
-                for (var offer : product.store_offers()) {
-                    if (!store.equals(offer.store_id())) continue;
-                    Integer count = offer.available_packs();
-                    if (count == null || count < 0 || packs.putIfAbsent(product.sku(),count) != null)
-                        throw new IllegalStateException("库存样本数据无效");
-                }
-            }
-        }
+        var skus = new HashSet<String>();
+        candidates.forEach(row -> skus.add(row.sku()));
+        var readings = pos.read(store,skus);
         Instant now = Instant.now();
         return candidates.stream().map(row -> {
-            Integer count = packs.get(row.sku());
-            if (count == null) throw new IllegalStateException("缺少门店商品库存");
+            var reading = readings.get(row.sku());
             return new Offer(row.sku(),row.name(),row.brand(),row.category(),row.size(),row.pieces(),
-                row.price(),count,row.snapshot(),now);
+                reading.price(),reading.availablePacks(),reading.businessTime(),now,reading.source());
         }).toList();
     }
 

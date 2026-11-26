@@ -2,6 +2,7 @@ package com.yu.babycare.agent;
 
 import com.yu.babycare.catalog.Catalog.Filter;
 import com.yu.babycare.knowledge.Knowledge.Evidence;
+import com.yu.babycare.catalog.Catalog.BrandChoice;
 import java.util.List;
 import java.util.Set;
 import java.math.BigDecimal;
@@ -15,7 +16,13 @@ public interface LanguageModel {
     record Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                 Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
                 Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,
-                Boolean promotions, Reference reference, String policyQuestion) {
+                Boolean promotions, Reference reference, String policyQuestion, BrandChoice brandChoice) {
+        public Plan(Intent intent,String store,String category,String size,BigDecimal budget,Boolean inStock,
+                    Set<String> brands,Set<String> exclude,Set<String> allow,Set<String> clear,String missingField,
+                    Integer quantity,BigDecimal totalBudget,Scope scope,Boolean promotions,Reference reference,String policyQuestion) {
+            this(intent,store,category,size,budget,inStock,brands,exclude,allow,clear,missingField,quantity,totalBudget,
+                scope,promotions,reference,policyQuestion,null);
+        }
         public Plan(Intent intent, String store, String category, String size, BigDecimal budget,
                     Boolean inStock, Set<String> brands, Set<String> exclude, Set<String> allow,
                     Set<String> clear, String missingField, Integer quantity, BigDecimal totalBudget, Scope scope,

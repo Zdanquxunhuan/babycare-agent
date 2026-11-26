@@ -26,7 +26,7 @@ public class PurchasePlanner {
     private final Duration timeout;
 
     public PurchasePlanner(Catalog catalog, Promotions promotions, LanguageModel model,
-            @Value("${babycare.purchase.max-steps:5}") int maxSteps,
+            @Value("${babycare.purchase.max-steps:7}") int maxSteps,
             @Value("${babycare.purchase.timeout:45s}") Duration timeout) {
         this.catalog = catalog;
         this.promotions = promotions;
@@ -36,9 +36,50 @@ public class PurchasePlanner {
     }
 
     public Guide.Reply run(Store store, Filter filter) {
-        long deadline = System.nanoTime() + timeout.toNanos();
+        return run(store,filter,new ArrayList<>(),System.nanoTime()+timeout.toNanos());
+    }
+
+    Guide.Result checkOriginal(Store store, Filter original) {
+        long deadline = System.nanoTime()+timeout.toNanos();
         List<String> trace = new ArrayList<>();
-        if (maxSteps < 1 || remainingMillis(deadline)<=0) return limited(trace);
+        if (maxSteps < 2 || remainingMillis(deadline)<=0) return new Guide.Result(original,limited(trace));
+        var skus = catalog.search(store,original);
+        trace.add("本店原品牌检索 · " + skus.size() + " 款");
+        if (skus.isEmpty())
+            return new Guide.Result(original,stop("empty","本店未找到指定品牌、品类和尺码的原款，请核对条件。",trace));
+        List<Offer> stock;
+        try {
+            stock = catalog.check(store,skus,true,remainingMillis(deadline));
+        } catch (ResponseStatusException ex) {
+            if (ex.getStatusCode()!=HttpStatus.SERVICE_UNAVAILABLE && ex.getStatusCode()!=HttpStatus.GATEWAY_TIMEOUT) throw ex;
+            return new Guide.Result(original,stop("stock_unavailable","原款库存暂无法确认，请稍后再查或请店员核实。",trace));
+        }
+        int available = stock.stream().mapToInt(Offer::packs).max().orElse(0);
+        String brand = String.join("、",original.brands());
+        trace.add("原款库存核验 · 同款最多 " + available + " 包");
+        Filter target = original;
+        String detail = "";
+        if (available < original.quantity()) {
+            detail = brand + "同款最多有 " + available + " 包，还差 " + (original.quantity()-available) + " 包。";
+            if (original.brandChoice()!=Catalog.BrandChoice.ALLOW_ALTERNATIVE)
+                return new Guide.Result(original,stop("empty",detail+"需要调整购买条件吗？",trace));
+            Set<String> excluded = new HashSet<>(original.excluded());
+            excluded.addAll(original.brands());
+            target = new Filter(original.category(),original.size(),original.budget(),true,Set.of(),Set.copyOf(excluded),
+                original.quantity(),original.totalBudget(),null,!Boolean.FALSE.equals(original.promotions()));
+            detail += "按本店同品类、同尺码查找其他品牌。";
+        } else if (original.promotions()==null) {
+            target = new Filter(original.category(),original.size(),original.budget(),true,original.brands(),original.excluded(),
+                original.quantity(),original.totalBudget(),null,true,original.selectedSku());
+        }
+        var reply = run(store,target,trace,deadline);
+        var result = new Guide.Reply(reply.type(),detail+reply.text(),reply.products(),reply.citations(),
+            reply.quantity(),reply.totals(),reply.trace(),reply.quotes());
+        return new Guide.Result(detail.isEmpty() ? original : original.select(null),result);
+    }
+
+    private Guide.Reply run(Store store, Filter filter,List<String> trace,long deadline) {
+        if (trace.size() >= maxSteps || remainingMillis(deadline)<=0) return limited(trace);
         List<String> candidates = catalog.search(store, filter);
         trace.add("本店商品检索 · " + candidates.size() + " 款候选");
         if (candidates.isEmpty()) return stop("empty","本店无符合品类、尺码及品牌条件的商品。",trace);
@@ -135,6 +176,7 @@ public class PurchasePlanner {
         List<Offer> matches = new ArrayList<>();
         Map<String,BigDecimal> totals = new LinkedHashMap<>();
         Map<String,Quote> quotes = new LinkedHashMap<>();
+        BigDecimal lowestPayable = null;
         for (Offer row : inStock) {
             BigDecimal price = row.price();
             BigDecimal quantity = BigDecimal.valueOf(filter.quantity());
@@ -142,6 +184,7 @@ public class PurchasePlanner {
             var applicable = rule.filter(r -> r.sku().equals(row.sku()));
             BigDecimal discount = applicable.map(r -> r.discount().min(regular)).orElse(BigDecimal.ZERO);
             BigDecimal payable = regular.subtract(discount);
+            lowestPayable = lowestPayable==null ? payable : lowestPayable.min(payable);
             boolean fits = within(payable,filter.totalBudget())
                 && (filter.budget()==null || payable.compareTo(filter.budget().multiply(quantity))<=0);
             if (fits) {
@@ -159,6 +202,11 @@ public class PurchasePlanner {
         } else {
             message = matches.isEmpty() ? "本店核验活动后没有符合当前预算的有货商品。"
                 : "本店核验活动后有 " + matches.size() + " 款有货商品符合当前购买条件。";
+        }
+        if (!unavailable && matches.isEmpty() && lowestPayable!=null && filter.totalBudget()!=null
+                && lowestPayable.compareTo(filter.totalBudget())>0) {
+            message += "同款 " + filter.quantity() + " 包最低合计 " + lowestPayable.toPlainString()
+                + " 元，超出总预算 " + lowestPayable.subtract(filter.totalBudget()).toPlainString() + " 元。需要调整预算吗？";
         }
         trace.add("完成 · 复核购买数量及预算");
         return new Guide.Reply(matches.isEmpty() ? "empty" : "products",message,matches,List.of(),

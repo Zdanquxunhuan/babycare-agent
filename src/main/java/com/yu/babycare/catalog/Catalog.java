@@ -26,9 +26,15 @@ public class Catalog {
             this(sku,name,brand,category,size,pieces,price,packs,snapshot,queriedAt,null);
         }
     }
+    public enum BrandChoice { ALLOW_ALTERNATIVE, REQUIRE_ORIGINAL, SIZE_ONLY }
     public record Filter(String category, String size, BigDecimal budget, boolean inStock,
                          Set<String> brands, Set<String> excluded, Integer quantity, BigDecimal totalBudget,
-                         BigDecimal pendingBudget, Boolean promotions, String selectedSku) {
+                         BigDecimal pendingBudget, Boolean promotions, String selectedSku, BrandChoice brandChoice) {
+        public Filter(String category,String size,BigDecimal budget,boolean inStock,Set<String> brands,
+                      Set<String> excluded,Integer quantity,BigDecimal totalBudget,BigDecimal pendingBudget,
+                      Boolean promotions,String selectedSku) {
+            this(category,size,budget,inStock,brands,excluded,quantity,totalBudget,pendingBudget,promotions,selectedSku,null);
+        }
         public Filter(String category, String size, BigDecimal budget, boolean inStock, Set<String> brands,
                       Set<String> excluded, Integer quantity, BigDecimal totalBudget, BigDecimal pendingBudget,
                       Boolean promotions) {
@@ -36,7 +42,7 @@ public class Catalog {
         }
         public static Filter empty() { return new Filter(null, null, null, false, Set.of(), Set.of(),null,null,null,null); }
         public Filter select(String sku) {
-            return new Filter(category,size,budget,inStock,brands,excluded,quantity,totalBudget,pendingBudget,promotions,sku);
+            return new Filter(category,size,budget,inStock,brands,excluded,quantity,totalBudget,pendingBudget,promotions,sku,brandChoice);
         }
 
         public boolean sameProducts(Filter other) {
@@ -75,6 +81,10 @@ public class Catalog {
             .map(o -> new Offer(p.sku(), p.name(), p.brand(), p.category(), p.size(), p.pieces_per_pack(),
                 o.price_cny(), o.available_packs(), fixture.snapshot_date(), now)))
             .toList();
+    }
+
+    public Optional<Offer> listedProduct(StoreSecurity.Store store,String sku) {
+        return scopedRows(store,store.id()).stream().filter(row -> row.sku().equals(sku)).findFirst();
     }
 
     public List<String> search(StoreSecurity.Store store, Filter filter) {

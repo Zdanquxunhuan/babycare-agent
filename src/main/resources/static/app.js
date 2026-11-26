@@ -52,7 +52,7 @@ function render(view) {
           add(row,"td",summary);
         }
       }
-      add(box,"small","模拟门店数据 · 快照 " + rows[0].snapshot + " · 本次查询 " +
+      add(box,"small",(rows[0].source || "模拟门店数据") + " · 快照 " + rows[0].snapshot + " · 本次查询 " +
         new Date(rows[0].queriedAt).toLocaleString("zh-CN"));
     }
     for (const quote of Object.values(turn.reply.quotes || {})) {

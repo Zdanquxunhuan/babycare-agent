@@ -42,6 +42,9 @@ public class Guide {
     private static final Pattern POSITION = Pattern.compile("第\\s*([0-9０-９零一二两三四五六七八九十百]+)\\s*[款件个]");
     private static final Pattern COMBINED_AMOUNT = Pattern.compile("共\\s*[0-9]+(?:\\.[0-9]+)?\\s*(?:元|块)");
 
+    public record ReviewDraft(UUID sourceMessage,String sku,String name,String originalQuestion,
+                              String request,Integer quantity,BigDecimal quotedTotal) {}
+
     /**
      * 一轮回答 / One answer returned to the caller.
      *
@@ -64,15 +67,20 @@ public class Guide {
      */
     public record Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
                         Integer quantity, Map<String,BigDecimal> totals, List<String> trace,
-                        Map<String,PurchasePlanner.Quote> quotes, String policyText) {
+                        Map<String,PurchasePlanner.Quote> quotes, String policyText, ReviewDraft reviewDraft) {
+        public Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
+                     Integer quantity, Map<String,BigDecimal> totals, List<String> trace,
+                     Map<String,PurchasePlanner.Quote> quotes, String policyText) {
+            this(type,text,products,citations,quantity,totals,trace,quotes,policyText,null);
+        }
         public Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
                      Integer quantity, Map<String,BigDecimal> totals, List<String> trace,
                      Map<String,PurchasePlanner.Quote> quotes) {
-            this(type,text,products,citations,quantity,totals,trace,quotes,null);
+            this(type,text,products,citations,quantity,totals,trace,quotes,null,null);
         }
         public Reply withPolicy(Optional<Knowledge.Evidence> evidence) {
             return new Reply(type,text,products,evidence.stream().toList(),quantity,totals,trace,quotes,
-                evidence.map(Knowledge.Evidence::excerpt).orElse("当前缺少有效条款，需人工确认。"));
+                evidence.map(Knowledge.Evidence::excerpt).orElse("当前缺少有效条款，需人工确认。"),reviewDraft);
         }
         public Reply(String type, String text, List<Catalog.Offer> products, List<Knowledge.Evidence> citations,
                      Integer quantity, Map<String,BigDecimal> totals, List<String> trace) {
@@ -199,7 +207,8 @@ public class Guide {
         if (invalidAmount(plan.budget()) || invalidAmount(plan.totalBudget()))
             return new Result(previous,Reply.message("clarify","请提供非负的预算金额，精确到分。"));
         // 合并历史条件与本轮槽位；即使后面追问，也要把部分条件带下去。/ Merge history with this turn's slots and carry partial conditions into clarifications.
-        var conditions = merge(previous,plan,question);
+        boolean review = plan.intent() == LanguageModel.Intent.REVIEW;
+        var conditions = review ? previous : merge(previous,plan,question);
         var reference = reference(question,plan.reference(),mentioned);
         String selected = previous.selectedSku();
         if (reference != null) {
@@ -207,18 +216,30 @@ public class Guide {
                 case POSITION -> {
                     Integer position = reference.position();
                     if (position == null || position < 1 || position > context.displayedSkus().size())
-                        return clarifySelection(conditions,context.displayedSkus().size());
+                        return clarifySelection(conditions,context.displayedSkus().size(),review);
                     selected = context.displayedSkus().get(position-1);
                 }
                 case CURRENT -> {
                     if (selected == null && context.displayedSkus().size()==1) selected = context.displayedSkus().getFirst();
                     if (selected == null || !context.displayedSkus().contains(selected))
-                        return clarifySelection(conditions,context.displayedSkus().size());
+                        return clarifySelection(conditions,context.displayedSkus().size(),review);
                 }
                 case NEW_LIST -> selected = null;
             }
         } else if (!conditions.sameProducts(previous)) {
             selected = null;
+        }
+        if (review) {
+            var displayed = context.displayedSkus();
+            if (selected == null && displayed.size()==1) selected = displayed.getFirst();
+            if (selected == null || !displayed.contains(selected))
+                return clarifySelection(previous,displayed.size(),true);
+            if (!mentioned.isEmpty()) {
+                var brands = new Filter(null,null,null,false,mentioned,Set.of(),null,null,null,null,selected);
+                if (mentioned.size()!=1 || catalog.search(store,brands).isEmpty())
+                    return clarifySelection(previous,displayed.size(),true);
+            }
+            return new Result(previous.select(selected),Reply.message("review_draft","请核对复核草稿，确认后提交给本店售后。"));
         }
         var filter = selected == null ? conditions : conditions.select(selected);
         if (stockMode.isPaused(store.id())) return manualStock(filter);
@@ -298,10 +319,10 @@ public class Guide {
         return 0;
     }
 
-    private static Result clarifySelection(Filter previous, int count) {
+    private static Result clarifySelection(Filter previous, int count,boolean review) {
         String prompt = count==0 ? "当前没有可定位的商品列表，请先列出本店商品。"
             : "请确认是列表中的第几款，可选第 1 至 " + count + " 款。";
-        return new Result(previous,Reply.message("clarify",prompt));
+        return new Result(previous,Reply.message("clarify",review ? "售后复核需要定位商品。"+prompt : prompt));
     }
 
     private static Result manualStock(Filter filter) {

@@ -65,6 +65,23 @@ function render(view) {
       const steps = add(details,"ol");
       turn.reply.trace.forEach(step => add(steps,"li",step));
     }
+    if (turn.reply.reviewDraft) {
+      const draft = turn.reply.reviewDraft;
+      showDraft(box,draft);
+      const submitted = view.reviews.find(ticket => ticket.draftMessage === turn.messageId);
+      if (submitted) showStatus(box,submitted);
+      else {
+        const confirm = add(box,"button","提交复核");
+        confirm.onclick = () => run(async () => {
+          try {
+            await api("/api/conversations/"+view.id+"/messages/"+turn.messageId+"/review","POST",
+              {evidenceId:turn.reply.citations[0]?.id ?? null});
+          } finally {
+            render(await api("/api/conversations/"+view.id));
+          }
+        });
+      }
+    }
     if (turn.reply.policyText) add(box,"p","售后政策：" + turn.reply.policyText);
     for (const cite of turn.reply.citations) {
       const source = add(box,"a",cite.title + " · " + (cite.section || "摘要") + " v" + cite.version + " · 查看原文");
@@ -90,6 +107,12 @@ async function init() {
   session = await api("/api/session");
   el("access").hidden = session.authenticated;
   const ops = session.role === "OPS";
+  const reviewer = session.role === "REVIEWER";
+  el("reviewer").hidden = !reviewer;
+  el("review-queue").replaceChildren();
+  el("history").replaceChildren();
+  el("my-cases").replaceChildren();
+  el("my-cases").hidden = true;
   el("ops").hidden = !ops;
   if (!ops) {
     el("versions").replaceChildren();
@@ -100,13 +123,14 @@ async function init() {
     el("stock-status").textContent = "";
     el("stock-history").removeAttribute("href");
   }
-  el("desk").hidden = !session.authenticated || ops;
+  el("desk").hidden = !session.authenticated || ops || reviewer;
   el("location").textContent = session.store?.name || "门店导购工作台";
   if (!session.authenticated) {
     el("history").replaceChildren();
     chat = pending = null;
     return;
   }
+  if (reviewer) { await loadReviewQueue(); return; }
   if (ops) { await Promise.all([loadPolicies(), loadStockModes()]); return; }
   render(await api("/api/conversations/current","POST"));
   pending = null;
@@ -223,6 +247,60 @@ async function loadPolicies() {
     });
   }
 }
+function showDraft(box,draft) {
+  add(box,"strong",draft.name+" · "+draft.sku);
+  add(box,"p","顾客原问："+draft.originalQuestion);
+  add(box,"p","转交请求："+draft.request);
+  add(box,"p","待售后确认：能否受理，以及顾客还需提供哪些材料。");
+  if (draft.quotedTotal != null)
+    add(box,"p","当时报价："+draft.quantity+" 包，共 "+draft.quotedTotal+" 元");
+}
+function showStatus(box,ticket) {
+  add(box,"p","复核单 "+ticket.id+" · "+(ticket.status === "PENDING" ? "待答复" : "已答复"));
+  if (ticket.answer) add(box,"p","本店售后："+ticket.answer);
+}
+function showCase(box,ticket) {
+  showDraft(box,ticket.draft);
+  if (ticket.evidence) {
+    const source = ticket.evidence;
+    add(box,"p",source.title+" · "+source.section+" v"+source.version+"："+source.excerpt);
+  } else add(box,"p","当前缺少有效条款，需人工确认。");
+  showStatus(box,ticket);
+}
+async function loadReviewQueue() {
+  const tickets = await api("/api/reviewer/requests");
+  const queue = el("review-queue");
+  queue.replaceChildren();
+  if (!tickets.length) add(queue,"p","暂无待复核事项");
+  for (const ticket of tickets) {
+    const row = add(queue,"article");
+    showCase(row,ticket);
+    const form = add(row,"form");
+    const label = add(form,"label","复核答复");
+    const answer = add(label,"textarea");
+    answer.required = true;
+    answer.maxLength = 1000;
+    add(form,"button","提交答复");
+    form.onsubmit = event => {
+      event.preventDefault();
+      run(async () => {
+        await api("/api/reviewer/requests/"+ticket.id+"/answer","POST",{answer:answer.value.trim()});
+        await loadReviewQueue();
+        notice("答复已返回导购会话");
+      });
+    };
+  }
+}
+el("my-reviews").onclick = () => run(async () => {
+  const tickets = await api("/api/my-reviews");
+  const box = el("my-cases");
+  box.replaceChildren();
+  box.hidden = false;
+  if (!tickets.length) add(box,"p","暂无已提交的复核单");
+  for (const ticket of tickets) showCase(add(box,"article"),ticket);
+});
+el("reload-reviews").onclick = () => run(loadReviewQueue);
+el("reviewer-logout").onclick = el("logout").onclick;
 el("ops-logout").onclick = el("logout").onclick;
 el("upload").onsubmit = event => {
   event.preventDefault();

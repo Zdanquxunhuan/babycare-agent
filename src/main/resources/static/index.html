@@ -3,10 +3,14 @@
 <title>BabyCare · 门店导购工作台</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
 <body><header><strong><span class="mark" aria-hidden="true">b</span> BabyCare</strong><span id="location">门店导购工作台</span></header>
 <main>
-<section id="access" hidden><h1>导购登录</h1><form id="login"><label>门店账号<select name="username"><option value="direct">模拟直营店 · direct</option><option value="franchise">模拟加盟店 · franchise</option><option value="ops">知识运营 · ops</option></select></label>
+<section id="access" hidden><h1>导购登录</h1><form id="login"><label>门店账号<select name="username"><option value="direct">模拟直营店 · direct</option><option value="franchise">模拟加盟店 · franchise</option><option value="direct-reviewer">直营售后 · direct-reviewer</option><option value="franchise-reviewer">加盟售后 · franchise-reviewer</option><option value="ops">知识运营 · ops</option></select></label>
 <label>密码<input name="password" type="password" autocomplete="current-password" placeholder="输入测试账号密码" required></label><button>进入工作台</button></form></section>
-<section id="desk" hidden><div class="bar"><h1>导购工作台</h1><nav><button id="fresh" class="quiet">新对话</button><button id="logout" class="quiet">退出</button></nav></div>
+<section id="desk" hidden><div class="bar"><h1>导购工作台</h1><nav><button id="my-reviews" class="quiet">我的复核单</button><button id="fresh" class="quiet">新对话</button><button id="logout" class="quiet">退出</button></nav></div>
+<div id="my-cases" hidden></div>
 <div id="history" aria-live="polite"></div><form id="compose"><label for="question">咨询内容</label><textarea id="question" required maxlength="2000" placeholder="例如，本店有哪些 200 元以内的纸尿裤？"></textarea><button>发送</button></form></section>
+<section id="reviewer" hidden>
+<div class="bar"><h1>本店待复核</h1><nav><button id="reload-reviews" class="quiet">刷新</button><button id="reviewer-logout" class="quiet">退出</button></nav></div>
+<div id="review-queue"></div></section>
 <section id="ops" hidden>
 <div class="bar"><h1>知识运营</h1><a href="/api/ops/alerts/stock-timeouts" target="_blank" rel="noopener">库存超时告警</a><button id="ops-logout" class="quiet">退出</button></div>
 <h2>门店库存核验</h2>

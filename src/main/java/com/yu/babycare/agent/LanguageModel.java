@@ -7,7 +7,7 @@ import java.util.Set;
 import java.math.BigDecimal;
 
 public interface LanguageModel {
-    enum Intent { PRODUCT, PRODUCT_POLICY, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
+    enum Intent { PRODUCT, PRODUCT_POLICY, REVIEW, RECOMMEND_SIZE, COMPARE, MIXED_BASKET, KNOWLEDGE, RISK, OTHER }
     enum Scope { UNIT, TOTAL }
     enum Check { PRICE, STOCK, PROMOTION }
     enum ReferenceKind { POSITION, CURRENT, NEW_LIST }

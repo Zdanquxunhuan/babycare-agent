@@ -35,7 +35,10 @@ public class BailianModel implements LanguageModel {
         String instruction = """
             解析母婴导购需求为 JSON。intent 必须为 PRODUCT（浏览、筛选、追加条件、询价、查库存）、
             RECOMMEND_SIZE（要求选合适尺码）、COMPARE、MIXED_BASKET（明确要求不同款组合购买）、
-            PRODUCT_POLICY（本轮同时要求商品核查和售后政策）、KNOWLEDGE、RISK（急症）或 OTHER。
+            PRODUCT_POLICY（本轮同时要求商品核查和售后政策）、REVIEW（要求交人工售后复核）、KNOWLEDGE、RISK（急症）或 OTHER。
+            明确要求把本次问题转交给售后人员时用 REVIEW，只提取商品指代。比如“帮我把第二款的拆包问题交给售后”
+            用 REVIEW 和 POSITION 2。“帮我把刚才的问题交售后”用 REVIEW 和 CURRENT。若上轮为售后复核追问商品，
+            用户只补充序号也用 REVIEW。仅咨询退换条件仍是知识查询。不要推定顾客已经购买或符合退款条件。
             仅提取本轮变更；其余字段省略。store 仅在明确要求某个门店时填 STORE-01（直营）
             或 STORE-02（加盟）；明确要查其他门店但无法定位时填 OTHER_STORE。跨店不改成本店。category 是纸尿裤或拉拉裤，size 是 S/M/L/XL/XXL，
             quantity 为明确要购买的同款包数（不是库存数量或每包片数）。totalBudget 是明确的合计上限，
